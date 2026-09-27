@@ -5,6 +5,7 @@ import {
   collectChildSessionIds,
   readLiveOutputObservation,
   readChildSessionTokenTotal,
+  readDisplayableSessionTokenTotal,
   readSessionTokenTotal,
   readStreamingOutputSample,
   recordStreamingOutputSample,
@@ -172,6 +173,16 @@ test("cumulative total counts input and output exactly once, not cache subsets",
     }),
     null,
   );
+});
+
+test("composer total hides the zero cumulative of a session without settled requests", () => {
+  // 起始阶段主会话还没有已结算请求、子会话也没有入账时，0 不是可展示的消耗总量。
+  assert.equal(readDisplayableSessionTokenTotal(0, 0), null);
+  assert.equal(readDisplayableSessionTokenTotal(null, 0), null);
+  // 任一来源出现真实账单后恢复显示；主会话累计缺失时维持既有规则，不拼出合计。
+  assert.equal(readDisplayableSessionTokenTotal(120, 0), 120);
+  assert.equal(readDisplayableSessionTokenTotal(0, 300), 300);
+  assert.equal(readDisplayableSessionTokenTotal(null, 300), null);
 });
 
 test("stream sample follows one response through reasoning and text, not previous responses", () => {

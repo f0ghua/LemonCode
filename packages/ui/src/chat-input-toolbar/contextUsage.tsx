@@ -55,7 +55,11 @@ import { runContextPanelActionWithClose } from "@/chat-input-toolbar/contextPane
 import { coordinateCodingPlanQuotaResetAutoPlay } from "@/chat-input-toolbar/codingPlanQuotaResetAutoPlay.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
 import type { SessionUsageState } from "@zcode/shared/zcode-protocol-v4";
-import { readSessionTokenTotal, type ChildSessionUsage } from "@/v4/composer/sessionTokenStats.js";
+import {
+  readDisplayableSessionTokenTotal,
+  readSessionTokenTotal,
+  type ChildSessionUsage,
+} from "@/v4/composer/sessionTokenStats.js";
 import {
   CONTEXT_QUOTA_RESET_URGENT_SECONDS,
   ContextQuotaResetOpportunityReminderContent,
@@ -796,7 +800,7 @@ export function ChatContextUsage({
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const ownSessionTotal = readSessionTokenTotal(sessionUsage ?? null, taskUsage?.used);
   const childTokenTotal = (childUsage?.inputTokens ?? 0) + (childUsage?.outputTokens ?? 0);
-  const sessionTokenTotal = ownSessionTotal === null ? null : ownSessionTotal + childTokenTotal;
+  const sessionTokenTotal = readDisplayableSessionTokenTotal(ownSessionTotal, childTokenTotal);
   const incompleteTotal = (childUsage?.unknownCount ?? 0) > 0;
   const combinedLiveOutputRate =
     liveOutputRate === null && childLiveOutputRate === null

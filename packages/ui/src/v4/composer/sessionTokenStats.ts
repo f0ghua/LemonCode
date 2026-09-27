@@ -78,6 +78,20 @@ export function readChildSessionTokenTotal(child: ConversationSnapshot): number 
   return total;
 }
 
+/**
+ * Composer 统计入口可展示的会话合计。
+ * 会话尚无任何已结算请求时累计为 0；此时 0 不是消耗总量，返回 null 让入口隐藏数字，
+ * 而不是在起始阶段渲染误导性的 0（specs/conversation-session-token-statistics.md）。
+ */
+export function readDisplayableSessionTokenTotal(
+  ownSessionTotal: number | null,
+  childTokenTotal: number,
+): number | null {
+  if (ownSessionTotal === null) return null;
+  const total = ownSessionTotal + childTokenTotal;
+  return total > 0 ? total : null;
+}
+
 export interface StreamingOutputSample {
   responseId: string;
   estimatedTokens: number;
