@@ -92,7 +92,7 @@
 
 ## 开放问题(实现前需对齐)
 
-1. 手机 attachment 的 scope 语义:控制"当前工作区"是作为 local workspace 的第二 attachment,还是注册 remote session 描述符?需对齐 `windowHostAttachmentRegistry` 的替换语义,确保不把 Renderer attachment 顶掉。
+1. 手机 attachment 的 scope 语义:**已定**——本地工作区镜像以 `scope:{kind:"local"}` 第二 attachment 挂到窗口 Host(`attachLocalWorkspaceSessionHost`,注册表按 attachmentId 键控、与 Renderer 共存);远程工作区继续走 `kind:"remote"` 三元组入口。镜像目标为判别联合(`remotePairingMirrorTargetSchema`)。
 2. 移动端 SPA 载体:已定——采用 `packages/web` 完整构建产物做镜像 UI,不做裁剪版。
 3. Cloudflare 免费额度对 WS 并发/时长/消息量的限制,以及是否需要付费兜底。
 4. RPC PersistentProtocol 可靠层(已实现未接线)是否在本项目 v2 接入隧道两端,替换纯透传的 SocketProtocol 语义。

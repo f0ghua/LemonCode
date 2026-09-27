@@ -193,21 +193,37 @@ test("组装不出镜像 target 时禁用开启等待并提示，错误码按本
   assert.match(unknown, /配对出错：SOME_FUTURE_CODE/);
 });
 
-test("buildRemotePairingMirrorTarget 仅在远程会话三元组齐备时产出占位 windowId 的 target", () => {
+test("buildRemotePairingMirrorTarget:远程三元组产出 remote target,本地工作区产出 local target", () => {
   assert.equal(buildRemotePairingMirrorTarget({}), null);
   assert.equal(buildRemotePairingMirrorTarget({ remoteSessionId: "s", workspacePath: "  " }), null);
-  const target = buildRemotePairingMirrorTarget({
+  const remote = buildRemotePairingMirrorTarget({
     remoteSessionId: " session-1 ",
     workspacePath: "/work/demo",
   });
-  assert.deepEqual(target, {
+  assert.deepEqual(remote, {
     // windowId 是 Main 权威字段的占位值(handler 按可信 sender 覆盖),见 remoteControlBridge.ts。
+    kind: "remote",
     windowId: REMOTE_PAIRING_PLACEHOLDER_WINDOW_ID,
     remoteSessionId: "session-1",
     workspacePath: "/work/demo",
     // 身份 key 统一规则:workspaceIdentity?.trim() || workspacePath。
     workspaceIdentity: "/work/demo",
   });
+  // 本地工作区(无 remoteSessionId)不再禁用「开启等待」:产出 local target,
+  // 由 Main 以 scope:{kind:"local"} 第二 attachment 挂到窗口 Host(与 Renderer 共存)。
+  const local = buildRemotePairingMirrorTarget({ workspacePath: "/work/local-demo" });
+  assert.deepEqual(local, {
+    kind: "local",
+    windowId: REMOTE_PAIRING_PLACEHOLDER_WINDOW_ID,
+    workspacePath: "/work/local-demo",
+    workspaceIdentity: "/work/local-demo",
+  });
+  const localWithIdentity = buildRemotePairingMirrorTarget({
+    workspacePath: "/work/local-demo",
+    workspaceIdentity: " identity-1 ",
+  });
+  assert.equal(localWithIdentity?.kind, "local");
+  assert.equal(localWithIdentity?.workspaceIdentity, "identity-1");
 });
 
 test("zh-CN 与 en-US 的 settings.remoteControl 文案键一一对应", () => {

@@ -894,9 +894,43 @@ export function createRemoteWorkspaceSessionManager(options: {
     return { process, port: port1, remoteKind: descriptor.target.kind, attachmentId };
   }
 
+  /** 本地工作区镜像:以 scope:{kind:"local"} 第二 attachment 挂到窗口 Host。
+   * 注册表按 attachmentId 键控(windowHostAttachmentRegistry.ts:79),与 Renderer 的
+   * local attachment 共存不互斥;Host resolveScope 对 local 返回 activeServices(generation 1),
+   * 手机因此拿到与 Renderer 相同的服务面 = 镜像语义(specs/mobile-remote-control-cf-workers.md)。
+   * 本地 services 未初始化(窗口还没有 InitLocal)时由 resolveScope 抛错,经控制器映射到面板。 */
+  function attachLocalWorkspaceSessionHost(params: { windowId: number }): {
+    process: ElectronUtilityProcess;
+    port: MessagePortMain;
+    remoteKind: "local";
+    attachmentId: string;
+  } {
+    const win = BrowserWindow.fromId(params.windowId);
+    if (!win) {
+      throw Object.assign(new Error("发起配对的窗口不存在"), {
+        code: "REMOTE_SESSION_WINDOW_MISMATCH" as const,
+      });
+    }
+    const process = getWindowHost(win);
+    const { port1, port2 } = createMessageChannel();
+    const attachmentId = randomUUID();
+    process.postMessage(
+      {
+        type: HostMessageTypes.AttachServicePort,
+        requestId: randomUUID(),
+        attachmentId,
+        clientMode: "web-remote-replayable" as const,
+        scope: { kind: "local" } as const,
+      },
+      [port2],
+    );
+    return { process, port: port1, remoteKind: "local", attachmentId };
+  }
+
   return {
     createRemoteWorkspaceSession,
     attachRemoteWorkspaceSessionHost,
+    attachLocalWorkspaceSessionHost,
     bindRemoteWorkspaceSessionContext,
     confirmRendererAttachmentReady,
     reattachRemoteWorkspaceSessionsForWindow,

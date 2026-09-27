@@ -272,15 +272,29 @@ export function normalizeRemoteControlWorkerBaseUrl(rawUrl: string): string | nu
 /** 手机镜像目标:由 Renderer(业务状态所有者)在开启配对时提供给 Main 做 attachment 调度。
  * windowId 是 Main 权威字段:RemotePairingStart handler 会用可信 IPC sender 的宿主窗口
  * (BrowserWindow.fromWebContents(event.sender).id)覆盖该值,Renderer 传值仅占位、不参与
- * 路由;防伪造窗口路由由 handler 单点保证(与 platform.ts tab shell 的 windowId 边界同源)。 */
-export const remotePairingMirrorTargetSchema = z
-  .object({
-    windowId: z.number().int().positive(),
-    remoteSessionId: nonEmptyStringSchema,
-    workspacePath: nonEmptyStringSchema,
-    workspaceIdentity: nonEmptyStringSchema,
-  })
-  .strict();
+ * 路由;防伪造窗口路由由 handler 单点保证(与 platform.ts tab shell 的 windowId 边界同源)。
+ * kind="remote":镜像既有 remote logical session(SSH/WSL/Docker),需三元组全等校验;
+ * kind="local":镜像窗口当前本地工作区,以 scope:{kind:"local"} 第二 attachment 挂到窗口
+ * Host(注册表按 attachmentId 键控,与 Renderer attachment 共存不互斥)。 */
+export const remotePairingMirrorTargetSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("remote"),
+      windowId: z.number().int().positive(),
+      remoteSessionId: nonEmptyStringSchema,
+      workspacePath: nonEmptyStringSchema,
+      workspaceIdentity: nonEmptyStringSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("local"),
+      windowId: z.number().int().positive(),
+      workspacePath: nonEmptyStringSchema,
+      workspaceIdentity: nonEmptyStringSchema,
+    })
+    .strict(),
+]);
 export type RemotePairingMirrorTarget = z.infer<typeof remotePairingMirrorTargetSchema>;
 
 export const remotePairingStartRequestSchema = z

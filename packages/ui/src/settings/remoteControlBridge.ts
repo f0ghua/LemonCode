@@ -94,17 +94,28 @@ export function buildRemotePairingMirrorTarget(params: {
 }): NonNullable<RemotePairingStartRequest["target"]> | null {
   const remoteSessionId = params.remoteSessionId?.trim();
   const workspacePath = params.workspacePath?.trim();
-  if (!remoteSessionId || !workspacePath) {
-    // attachRemoteWorkspaceSessionHost 要求既有 remote session route + 三元组全等
-    // (PROTOCOL.md §6.2);本地 workspace 没有 remoteSessionId,组装不出可用目标,
-    // 调用方必须保持 target 缺省,由面板禁用「开启等待」而不是让配对在 bridge.open 后失败。
+  if (!workspacePath) {
+    // 没有工作区路径就组装不出镜像目标;调用方保持 target 缺省,面板禁用「开启等待」。
     return null;
   }
+  // 身份 key 统一规则:workspaceIdentity?.trim() || workspacePath(AGENTS.md Workspace Identity)。
+  const workspaceIdentity = params.workspaceIdentity?.trim() || workspacePath;
+  if (remoteSessionId) {
+    // 远程工作区(SSH/WSL/Docker):走既有 remote 入口,三元组全等校验(PROTOCOL.md §6.2)。
+    return {
+      kind: "remote",
+      workspacePath,
+      workspaceIdentity,
+      remoteSessionId,
+      windowId: REMOTE_PAIRING_PLACEHOLDER_WINDOW_ID,
+    };
+  }
+  // 本地工作区:scope:{kind:"local"} 第二 attachment 挂到窗口 Host,与 Renderer 共存
+  // (注册表按 attachmentId 键控);手机拿到与 Renderer 相同的服务面 = 镜像语义。
   return {
-    // 身份 key 统一规则:workspaceIdentity?.trim() || workspacePath(AGENTS.md Workspace Identity)。
-    workspaceIdentity: params.workspaceIdentity?.trim() || workspacePath,
+    kind: "local",
     workspacePath,
-    remoteSessionId,
+    workspaceIdentity,
     windowId: REMOTE_PAIRING_PLACEHOLDER_WINDOW_ID,
   };
 }

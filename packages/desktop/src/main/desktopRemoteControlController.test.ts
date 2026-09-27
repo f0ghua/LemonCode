@@ -122,6 +122,7 @@ function makeAttachOk() {
 
 function makeController(options?: {
   attach?: ReturnType<typeof makeAttachOk>["attach"];
+  attachLocal?: ReturnType<typeof makeAttachOk>["attach"];
 }) {
   const { map, service } = makeFakeCredentials();
   const { tunnels, createTunnelSession } = makeTunnelFactory();
@@ -130,11 +131,16 @@ function makeController(options?: {
   type AttachFn = NonNullable<
     Parameters<typeof createRemoteControlController>[0]["attachRemoteWorkspaceSessionHost"]
   >;
+  type LocalAttachFn = NonNullable<
+    Parameters<typeof createRemoteControlController>[0]["attachLocalWorkspaceSessionHost"]
+  >;
   const controller = createRemoteControlController({
     logger: { info() {}, warn() {}, error() {} },
     credentialService: service,
     attachRemoteWorkspaceSessionHost: (options?.attach ??
       okAttach.attach) as unknown as AttachFn,
+    attachLocalWorkspaceSessionHost: (options?.attachLocal ??
+      okAttach.attach) as unknown as LocalAttachFn,
     broadcast: (channel, payload) => broadcasts.push({ channel, payload }),
     now: (() => {
       let t = 1_000_000;
@@ -148,6 +154,7 @@ function makeController(options?: {
 }
 
 const MIRROR_TARGET = {
+  kind: "remote",
   windowId: 1,
   remoteSessionId: "rs-1",
   workspacePath: "/work",
@@ -364,6 +371,34 @@ test("bridge.open:attach 以 web-remote-replayable 调度,帧泵双向连通", a
 
   // port 流控对象不穿越 WS。
   okAttach.emitPortMessage({ __zcodeRpcControl: "connection-flow-v1", state: "saturated" });
+  assert.equal(tunnel.sentBinary.length, 1);
+});
+
+test('本地工作区镜像:local target 走 scope:{kind:"local"} 第二 attachment', async () => {
+  const { controller, tunnels, broadcasts, okAttach } = makeController();
+  const start = await enableAndStart(controller, {
+    kind: "local",
+    windowId: 1,
+    workspacePath: "/work/local-demo",
+    workspaceIdentity: "/work/local-demo",
+  } as unknown as typeof MIRROR_TARGET);
+  assert.ok(start.success);
+  const tunnel = tunnels[0]!;
+
+  tunnel.delegate.onBridgeOpen({
+    type: "bridge.open",
+    proto: 1,
+    deviceId: "device-local",
+    resumed: false,
+  });
+  // local 分支不经 remote 入口:不携带三元组/workspaceKey,只传窗口(Main 权威覆盖后)。
+  assert.equal(okAttach.calls.length, 1);
+  assert.deepEqual(okAttach.calls[0], { windowId: 1 });
+  assert.ok(broadcasts.some((entry) => entry.payload.state === "bridged"));
+  // 本地镜像与 remote 一样有完整数据面:WS↔port 帧双向。
+  tunnel.delegate.onBridgeBinary?.(encodeRemoteControlRegularFrame(new Uint8Array([9])));
+  assert.equal(okAttach.postedToPort.length, 1);
+  okAttach.emitPortMessage(new Uint8Array([8]));
   assert.equal(tunnel.sentBinary.length, 1);
 });
 

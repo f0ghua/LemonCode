@@ -79,6 +79,13 @@ export interface RemoteControlControllerOptions {
     remoteKind: string;
     attachmentId: string;
   };
+  /** 本地工作区镜像:scope:{kind:"local"} 第二 attachment(与 Renderer 共存,不互斥)。 */
+  attachLocalWorkspaceSessionHost: (params: { windowId: number }) => {
+    process: RemoteControlAttachmentHostProcess;
+    port: RemoteControlAttachmentPort;
+    remoteKind: string;
+    attachmentId: string;
+  };
   /** 状态推送到全部应用窗口(Main 负责广播;Renderer 面板只消费)。 */
   broadcast: (channel: string, payload: RemotePairingStatePush) => void;
   now?: () => number;
@@ -480,16 +487,21 @@ export function createRemoteControlController(options: RemoteControlControllerOp
     void touchDeviceLastSeen(deviceId);
     clearIdleDisconnectTimer();
     try {
-      const attached = options.attachRemoteWorkspaceSessionHost({
-        windowId: mirrorTarget.windowId,
-        remoteSessionId: mirrorTarget.remoteSessionId,
-        workspacePath: mirrorTarget.workspacePath,
-        workspaceIdentity: mirrorTarget.workspaceIdentity,
-        // attach 入口以 workspaceKey === workspaceIdentity 做 fail-closed 校验
-        // (desktopRemoteSessions.ts:865-873);镜像目标恒携带 identity。
-        workspaceKey: mirrorTarget.workspaceIdentity,
-        clientMode: "web-remote-replayable",
-      });
+      // 本地工作区走 scope:{kind:"local"} 第二 attachment(与 Renderer 共存);
+      // 远程工作区走既有 remote 入口,三元组全等校验不变(PROTOCOL.md §6.2)。
+      const attached =
+        mirrorTarget.kind === "local"
+          ? options.attachLocalWorkspaceSessionHost({ windowId: mirrorTarget.windowId })
+          : options.attachRemoteWorkspaceSessionHost({
+              windowId: mirrorTarget.windowId,
+              remoteSessionId: mirrorTarget.remoteSessionId,
+              workspacePath: mirrorTarget.workspacePath,
+              workspaceIdentity: mirrorTarget.workspaceIdentity,
+              // attach 入口以 workspaceKey === workspaceIdentity 做 fail-closed 校验
+              // (desktopRemoteSessions.ts:865-873);镜像目标恒携带 identity。
+              workspaceKey: mirrorTarget.workspaceIdentity,
+              clientMode: "web-remote-replayable",
+            });
       const pump = createRemoteControlFramePump({
         ws: {
           sendBinary: (data) => current.tunnel.sendBridgeBinary(data),
@@ -526,7 +538,8 @@ export function createRemoteControlController(options: RemoteControlControllerOp
         deviceId,
         resumed,
         attachmentId: attached.attachmentId,
-        remoteSessionId: mirrorTarget.remoteSessionId,
+        mirrorKind: mirrorTarget.kind,
+        remoteSessionId: mirrorTarget.kind === "remote" ? mirrorTarget.remoteSessionId : null,
       });
       pushState({ state: "bridged", roomId: current.roomId });
     } catch (error) {
@@ -664,7 +677,12 @@ export function createRemoteControlController(options: RemoteControlControllerOp
     }
     if (request.accessKey !== undefined) {
       // 接入 Key 只进凭据集中存储:不落明文配置、不进日志、不回读(§6.3)。
-      await store.saveAccessKey(request.accessKey);
+      // 存前 trim:粘贴时常带入首尾空白/换行,会导致与 Worker secret 恒定时间比较 401。
+      const accessKey = request.accessKey.trim();
+      if (accessKey.length < 32) {
+        return { success: false, error: "ACCESS_KEY_INVALID" };
+      }
+      await store.saveAccessKey(accessKey);
     }
     const next = {
       enabled: request.enabled ?? persisted.enabled,

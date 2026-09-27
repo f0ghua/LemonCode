@@ -791,6 +791,8 @@ const remoteControlController = createRemoteControlController({
   credentialService: remoteControlCredentialService,
   attachRemoteWorkspaceSessionHost:
     remoteSessionManager.attachRemoteWorkspaceSessionHost,
+  attachLocalWorkspaceSessionHost:
+    remoteSessionManager.attachLocalWorkspaceSessionHost,
   broadcast: (channel, payload) => {
     for (const win of getApplicationWindowsExcludingCuaIndicator()) {
       if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
