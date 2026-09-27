@@ -72,3 +72,9 @@ packages/desktop/.e2e-network-capture/
 
 # cfworker-remote 是独立 git 仓库(Cloudflare Workers 隧道),单独提交与部署。
 cfworker-remote/
+
+# 构建步骤误写入 src 的产物,不入库。
+packages/desktop/src/scheduler/schedulerProtocol.d.ts
+packages/desktop/src/scheduler/schedulerProtocol.d.ts.map
+packages/desktop/src/scheduler/schedulerProtocol.js
+packages/desktop/src/scheduler/schedulerProtocol.js.map
