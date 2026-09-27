@@ -74,6 +74,32 @@ declare global {
       }): Promise<BrowserGuestAttachResult>;
       /** 释放当前窗口里的远程 session */
       disposeRemoteSession(sessionId: string): Promise<void>;
+      /** 手机远程控制:开启配对等待(生成二维码载荷并出站注册房间);仅 Desktop 暴露 */
+      startRemotePairing?(
+        request?: import("@zcode/shared").RemotePairingStartRequest,
+      ): Promise<import("@zcode/shared").RemotePairingStartResult>;
+      /** 手机远程控制:停止配对(room.stop、断出站、detach 桥) */
+      stopRemotePairing?(): Promise<void>;
+      /** 手机远程控制:对 pairing.requested 的用户裁决 */
+      decideRemotePairing?(
+        request: import("@zcode/shared").RemotePairingDecideRequest,
+      ): Promise<void>;
+      /** 手机远程控制:订阅配对面板状态推送(面板状态唯一来源),返回 disposer */
+      onRemotePairingState?(
+        handler: (state: import("@zcode/shared").RemotePairingStatePush) => void,
+      ): () => void;
+      /** 手机远程控制:读取已授权设备列表 */
+      listRemoteDevices?(): Promise<import("@zcode/shared").RemoteDevicesRefreshResult>;
+      /** 手机远程控制:吊销已授权设备(立即断开其连接并使凭据失效) */
+      revokeRemoteDevice?(deviceId: string): Promise<void>;
+      /** 手机远程控制:读取配置与配对状态快照;接入 Key 只回 hasAccessKey,永不回明文 */
+      getRemoteControlConfig?(): Promise<import("@zcode/shared").RemoteControlConfigSnapshot>;
+      /** 手机远程控制:写入配置;accessKey 为 write-only,进凭据集中存储 */
+      setRemoteControlConfig?(
+        request: import("@zcode/shared").RemoteControlConfigSetRequest,
+      ): Promise<import("@zcode/shared").RemoteControlConfigSetResult>;
+      /** 手机远程控制:测试桌面到 Worker 隧道的连通性(Main 持接入 Key 调 /api/health) */
+      testRemoteControlConnection?(): Promise<import("@zcode/shared").RemoteControlTestResult>;
       /** 检查本机 Docker daemon 是否可用 */
       isDockerAvailable(): Promise<boolean>;
       /** 列出本机可用的 WSL 发行版 */

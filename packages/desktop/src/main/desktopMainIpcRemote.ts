@@ -5,15 +5,29 @@ import {
   armsCustomEventPayloadSchema,
   buildRemoteWorkspaceConnectResultTelemetry,
   classifyRemoteUsageError,
+  DEFAULT_REMOTE_CONTROL_PAIRING_TTL_MS,
   formatZodError,
   normalizeUnknownError,
   InternalChannels,
   isTrustedCodingPlanWebviewOrigin,
+  remoteControlConfigSetRequestSchema,
+  remoteDeviceRevokeRequestSchema,
+  remotePairingDecideRequestSchema,
+  remotePairingStartRequestSchema,
   resolveZaiBusinessBaseUrl,
   PlatformChannels,
   remoteTargetSchema,
   rendererTelemetryEventPayloadSchema,
   type ArmsRumEnv,
+  type RemoteControlConfigSetRequest,
+  type RemoteControlConfigSetResult,
+  type RemoteControlConfigSnapshot,
+  type RemoteControlTestResult,
+  type RemoteDeviceRevokeRequest,
+  type RemoteDevicesRefreshResult,
+  type RemotePairingDecideRequest,
+  type RemotePairingStartRequest,
+  type RemotePairingStartResult,
   type RemoteTarget,
   type TelemetryEventPayload,
 } from "@zcode/shared";
@@ -196,6 +210,17 @@ export function registerRemoteIpcHandlers(options: {
   listAvailableWSLDistros: () => Promise<unknown[]>;
   listAvailableDockerContainers: () => Promise<unknown[]>;
   listSSHConfigAliases: () => Promise<unknown[]>;
+  /** 手机远程控制(只有 Desktop Main 实现该能力;缺失时通道返回 not_supported)。 */
+  remoteControl?: {
+    startPairing: (request: RemotePairingStartRequest) => Promise<RemotePairingStartResult>;
+    stopPairing: () => Promise<void>;
+    decidePairing: (request: RemotePairingDecideRequest) => Promise<void>;
+    refreshDevices: () => Promise<RemoteDevicesRefreshResult>;
+    revokeDevice: (request: RemoteDeviceRevokeRequest) => Promise<void>;
+    getConfigSnapshot: () => Promise<RemoteControlConfigSnapshot>;
+    testConnection: () => Promise<RemoteControlTestResult>;
+    setConfig: (request: RemoteControlConfigSetRequest) => Promise<RemoteControlConfigSetResult>;
+  };
 }) {
   function reportRemoteUsageEvent(rendererId: number, event: TelemetryEventPayload): void {
     try {
@@ -588,5 +613,101 @@ export function registerRemoteIpcHandlers(options: {
       });
       return [];
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // 手机远程控制(cfworker-remote 协议契约 §6.3);Main 只做鉴权/配对/attachment 调度。
+  // ---------------------------------------------------------------------------
+  const remoteControlNotSupported = () => ({ success: false, error: "not_supported" } as const);
+
+  ipcMain.handle(PlatformChannels.RemotePairingStart, async (event, rawPayload: unknown) => {
+    if (!options.remoteControl) return remoteControlNotSupported();
+    const parsed = remotePairingStartRequestSchema.safeParse(rawPayload ?? {});
+    if (!parsed.success) {
+      const error = `Invalid remote-pairing-start payload: ${formatZodError(parsed.error)}`;
+      options.logger.warn("[remote-pairing-start]", error);
+      return { success: false, error } satisfies RemotePairingStartResult;
+    }
+    // 契约 §6.3:镜像目标的 windowId 由 handler 以发起 renderer 所属窗口权威覆盖,
+    // 防伪造跨窗口镜像路由;Renderer 传入的 windowId 只作提示,不作为路由依据。
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWindow) {
+      options.logger.warn("[remote-pairing-start] sender window not found");
+      return { success: false, error: "WINDOW_NOT_FOUND" } satisfies RemotePairingStartResult;
+    }
+    const target = parsed.data.target
+      ? { ...parsed.data.target, windowId: senderWindow.id }
+      : undefined;
+    return options.remoteControl.startPairing({ target });
+  });
+
+  ipcMain.handle(PlatformChannels.RemotePairingStop, async () => {
+    if (!options.remoteControl) return;
+    await options.remoteControl.stopPairing();
+  });
+
+  ipcMain.handle(PlatformChannels.RemotePairingDecide, async (_event, rawPayload: unknown) => {
+    if (!options.remoteControl) return;
+    const parsed = remotePairingDecideRequestSchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      options.logger.warn(
+        `[remote-pairing-decide] invalid payload: ${formatZodError(parsed.error)}`,
+      );
+      return;
+    }
+    await options.remoteControl.decidePairing(parsed.data);
+  });
+
+  ipcMain.handle(PlatformChannels.RemoteDevicesRefresh, async () => {
+    if (!options.remoteControl) return { devices: [] };
+    return options.remoteControl.refreshDevices();
+  });
+
+  ipcMain.handle(PlatformChannels.RemoteDeviceRevoke, async (_event, rawPayload: unknown) => {
+    if (!options.remoteControl) return;
+    const parsed = remoteDeviceRevokeRequestSchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      options.logger.warn(
+        `[remote-device-revoke] invalid payload: ${formatZodError(parsed.error)}`,
+      );
+      return;
+    }
+    await options.remoteControl.revokeDevice(parsed.data);
+  });
+
+  ipcMain.handle(PlatformChannels.RemoteControlConfigGet, async () => {
+    if (!options.remoteControl) {
+      // 未装配能力时回 disabled 缺省面;UI 以 enabled=false 隐藏入口,不产生出站请求。
+      // TTL 缺省值复用 shared 常量,避免与 persistSchema 的默认值漂移。
+      return {
+        enabled: false,
+        workerBaseUrl: "",
+        hasAccessKey: false,
+        pairingTtlMs: DEFAULT_REMOTE_CONTROL_PAIRING_TTL_MS,
+        allowNewDevices: true,
+        idleDisconnectMs: 0,
+        pairing: null,
+        pairingUrl: null,
+      } satisfies RemoteControlConfigSnapshot;
+    }
+    return options.remoteControl.getConfigSnapshot();
+  });
+
+  ipcMain.handle(PlatformChannels.RemoteControlTest, async () => {
+    if (!options.remoteControl) {
+      return { success: false, error: "not_supported" } satisfies RemoteControlTestResult;
+    }
+    return options.remoteControl.testConnection();
+  });
+
+  ipcMain.handle(PlatformChannels.RemoteControlConfigSet, async (_event, rawPayload: unknown) => {
+    if (!options.remoteControl) return remoteControlNotSupported();
+    const parsed = remoteControlConfigSetRequestSchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      const error = `Invalid remote-control-config-set payload: ${formatZodError(parsed.error)}`;
+      options.logger.warn("[remote-control-config-set]", error);
+      return { success: false, error } satisfies RemoteControlConfigSetResult;
+    }
+    return options.remoteControl.setConfig(parsed.data);
   });
 }

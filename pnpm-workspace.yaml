@@ -29,3 +29,12 @@ allowBuilds:
   protobufjs: true
   ssh2: true
   unsafe-pointer: true
+# pnpm 10+ 不再读取 package.json 的 "pnpm" 字段,overrides 与 patchedDependencies
+# 统一迁移到本文件(值与 pnpm-lock.yaml 顶部记录保持一致)。
+overrides:
+  react: 19.2.7
+  react-dom: 19.2.7
+patchedDependencies:
+  '@arms/rum-electron@0.0.3': patches/@arms__rum-electron@0.0.3.patch
+  '@ai-sdk/openai-compatible@2.0.60': patches/@ai-sdk__openai-compatible@2.0.60.patch
+  '@ai-sdk/anthropic@3.0.81': patches/@ai-sdk__anthropic@3.0.81.patch

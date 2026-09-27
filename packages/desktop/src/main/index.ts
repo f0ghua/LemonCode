@@ -185,6 +185,7 @@ import {
   isWorkspaceOpenUrl,
 } from "./desktopDeepLinkUrl.js";
 import { createRemoteWorkspaceSessionManager } from "./desktopRemoteSessions.js";
+import { createRemoteControlController } from "./desktopRemoteControlController.js";
 import {
   reportRemoteConnectionStateChangedToArms,
   reportRemoteDisconnectToArms,
@@ -665,6 +666,8 @@ const mainSettingService = createSettingService();
 const appLaunchGate = createAppLaunchGate();
 const appLaunchCoordinator = createAppLaunchCoordinator(appLaunchGate);
 const appTelemetryCredentialService = createCredentialService();
+// 手机远程控制的接入 Key/设备哈希表与遥测凭据共用同一加密凭据存储,键空间互不相交。
+const remoteControlCredentialService = createCredentialService();
 async function resolveCurrentZCodeEndpointOrigin() {
   return resolveZCodeEndpointOrigin({
     env: ZCODE_ENV,
@@ -779,6 +782,22 @@ const remoteSessionManager = createRemoteWorkspaceSessionManager({
   resolveWslTarget: resolveCanonicalWslTarget,
   reportRemoteConnectionStateChanged: reportRemoteConnectionStateChangedToArms,
   reportRemoteDisconnect: reportRemoteDisconnectToArms,
+});
+
+// 手机远程控制(cfworker-remote 隧道):Main 只做鉴权/配对/心跳/转发/attachment 调度;
+// 镜像目标由 Renderer(业务状态所有者)在 startPairing 请求里提供,Main 不复制 workspace 状态。
+const remoteControlController = createRemoteControlController({
+  logger,
+  credentialService: remoteControlCredentialService,
+  attachRemoteWorkspaceSessionHost:
+    remoteSessionManager.attachRemoteWorkspaceSessionHost,
+  broadcast: (channel, payload) => {
+    for (const win of getApplicationWindowsExcludingCuaIndicator()) {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send(channel, payload);
+      }
+    }
+  },
 });
 
 const deviceMid = ensureDesktopDeviceMidSync();
@@ -1057,6 +1076,8 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
     // remote session、attachment 和 transport 都由窗口 Host 持有；这里先清理
     // Main 的请求关联，再由下方每窗口唯一 Host 的 shutdown barrier 释放真实连接与 Agent。
     remoteSessionManager.disposeAllAndWaitForAppShutdown(reason),
+    // 手机远控桥:先停帧泵再 detach port 并尽力发送 room.stop,主动关闭房间断开出站。
+    Promise.resolve().then(() => remoteControlController.dispose(reason)),
     ...hostProcesses.map((child, index) =>
       disposeHostProcessAndWait(
         child,
@@ -2114,6 +2135,16 @@ app.whenReady().then(async () => {
     listAvailableWSLDistros,
     listAvailableDockerContainers,
     listSSHConfigAliases,
+    remoteControl: {
+      startPairing: (request) => remoteControlController.startPairing(request),
+      stopPairing: () => remoteControlController.stopPairing("pairing-stop-requested"),
+      decidePairing: (request) => remoteControlController.decidePairing(request),
+      refreshDevices: () => remoteControlController.refreshDevices(),
+      revokeDevice: (request) => remoteControlController.revokeDevice(request.deviceId),
+      getConfigSnapshot: () => remoteControlController.getConfigSnapshot(),
+      testConnection: () => remoteControlController.testConnection(),
+      setConfig: (request) => remoteControlController.setConfig(request),
+    },
   });
 
   // 等待 ARMS 完成 init（含渲染进程注入监听），避免首窗 dom-ready 早于 SDK 注册导致无上报

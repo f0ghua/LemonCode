@@ -71,6 +71,7 @@ import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSectio
 import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
 import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
+import { RemoteControlSettingsSection } from "@/settings/RemoteControlSettingsSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
 import { MigrationSection } from "@/settings/MigrationSection.js";
 import { GitBackupSection } from "@/settings/GitBackupSection.js";
@@ -1943,6 +1944,14 @@ export function SettingsPage({
                             remoteSessionId={activeWorkspaceTab?.remoteSessionId}
                             remoteTarget={activeWorkspaceTab?.remoteTarget}
                             localWorkspacePath={activeWorkspaceTab?.localWorkspacePath}
+                          />
+                        ) : activeSection === "remoteControl" ? (
+                          <RemoteControlSettingsSection
+                            mirrorWorkspace={{
+                              remoteSessionId: activeWorkspaceTab?.remoteSessionId,
+                              workspacePath: activeWorkspacePath,
+                              workspaceIdentity: activeWorkspaceIdentity,
+                            }}
                           />
                         ) : activeSection === "gitBackup" ? (
                           <GitBackupSection enabled={false} onEnabledChange={() => {}} />

@@ -2,6 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- 移动端镜像产物以相对 base(--base=./,scripts/build-mobile-web.mjs)构建,由
+         Worker 在 / 与 /p/:roomId 回退同一份 index.html(cfworker-remote/PROTOCOL.md §1);
+         <base href="/"> 让相对资源始终从站点根解析,深链页不会去请求 /p/assets/* 等不存在的路径。
+         根路径部署下与绝对 base 的解析结果一致,不影响既有 server/Electron 托管形态。 -->
+    <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#161616" />
     <meta name="color-scheme" content="dark" />

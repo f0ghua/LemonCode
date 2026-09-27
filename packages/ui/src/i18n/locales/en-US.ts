@@ -2096,6 +2096,138 @@ const enUS: Record<string, string> = {
     "Unclassified files and stale copies left after changing the data directory.",
   "resourceManager.storage.confirmDescription.backups":
     "These copies allow recovery if an upgrade or migration goes wrong; deleting them cannot be undone.",
+  "settings.remoteControl.title": "Remote control",
+  "settings.remoteControl.unavailable":
+    "Remote control is only available in the ZCode desktop app, and requires a desktop build with this feature.",
+  "settings.remoteControl.enable.title": "Enable remote control",
+  "settings.remoteControl.enable.description":
+    "Mirror this desktop on your phone through a Cloudflare Worker tunnel: the phone gets exactly the same capabilities as the desktop user. The desktop only makes outbound connections to the Worker.",
+  "settings.remoteControl.enable.missingPrerequisites":
+    "Set the Worker domain and save the access key before enabling remote control.",
+  "settings.remoteControl.enable.enabledToast": "Remote control enabled",
+  "settings.remoteControl.enable.disabledToast":
+    "Remote control disabled; the desktop will disconnect from the Worker",
+  "settings.remoteControl.workerBaseUrl.title": "Worker domain",
+  "settings.remoteControl.workerBaseUrl.description":
+    "Deployed address of the cfworker-remote Worker, domain only, e.g. https://your-worker.workers.dev",
+  "settings.remoteControl.workerBaseUrl.invalid":
+    "Invalid Worker domain: use an https:// address (http://localhost is allowed for local debugging)",
+  "settings.remoteControl.accessKey.title": "Access key",
+  "settings.remoteControl.accessKey.description":
+    "The access key configured when deploying the Worker. It is stored in the credential vault, never written to plain config, and only used to authenticate the desktop against the Worker.",
+  "settings.remoteControl.accessKey.placeholder": "Paste access key",
+  "settings.remoteControl.accessKey.save": "Save key",
+  "settings.remoteControl.accessKey.saved": "Access key saved",
+  "settings.remoteControl.accessKey.configured":
+    "Access key configured (no longer shown in plain text)",
+  "settings.remoteControl.accessKey.notConfigured": "No access key configured yet",
+  "settings.remoteControl.config.save": "Save",
+  "settings.remoteControl.config.saved": "Settings saved",
+  "settings.remoteControl.config.saveFailed": "Failed to save, please try again",
+  "settings.remoteControl.config.saveFailedWithReason": "Failed to save: {error}",
+  "settings.remoteControl.testConnection.title": "Test connection",
+  "settings.remoteControl.testConnection.description":
+    "Send one health check to the Worker with the current domain and access key",
+  "settings.remoteControl.testConnection.action": "Test connection",
+  "settings.remoteControl.testConnection.success": "Connected ({latencyMs}ms)",
+  "settings.remoteControl.testConnection.failed": "Connection failed: {error}",
+  "settings.remoteControl.pairing.section": "Phone pairing",
+  "settings.remoteControl.pairing.disabledHint":
+    "Enable remote control to generate a pairing QR code here and grant your phone access via mutual authorization.",
+  "settings.remoteControl.pairing.status.idle": "Not waiting",
+  "settings.remoteControl.pairing.status.unknown": "Status unknown",
+  "settings.remoteControl.pairing.status.waiting": "Waiting for the phone to connect…",
+  "settings.remoteControl.pairing.status.pairing": "Device requesting access",
+  "settings.remoteControl.pairing.status.bridged": "Ready",
+  "settings.remoteControl.pairing.status.error": "Pairing error",
+  "settings.remoteControl.pairing.idleDescription":
+    "Generate a pairing QR code, then scan it or open the copied link on the phone. Once both sides authorize, mirroring starts.",
+  "settings.remoteControl.pairing.unknownDescription":
+    "This page has not received any pairing state from the desktop, so it cannot tell whether mirroring is active; if the phone already shows “Ready”, mirroring is still running. Starting the wait again stops the current room and generates a new QR code — a mirroring phone is disconnected immediately.",
+  "settings.remoteControl.pairing.restartConfirmTitle": "Start waiting again?",
+  "settings.remoteControl.pairing.restartConfirmDescription":
+    "The current pairing room will be stopped and a new QR code generated; if the phone is currently mirroring, its connection drops immediately and pairing must be redone with a fresh scan and your confirmation.",
+  "settings.remoteControl.pairing.restartConfirmAction": "Stop and restart",
+  "settings.remoteControl.pairing.noMirrorTarget":
+    "The phone mirrors the currently active remote workspace; connect to a remote workspace and keep it active before starting.",
+  "settings.remoteControl.pairing.start": "Start waiting",
+  "settings.remoteControl.pairing.refreshQr": "Refresh QR code",
+  "settings.remoteControl.pairing.stop": "Stop",
+  "settings.remoteControl.pairing.retry": "Start over",
+  "settings.remoteControl.pairing.copyLink": "Copy link",
+  "settings.remoteControl.pairing.copiedToast": "Pairing link copied",
+  "settings.remoteControl.pairing.copyFailed": "Copy failed; please select and copy the link manually",
+  "settings.remoteControl.pairing.qrHint":
+    "Scan with your phone, or open the link below in its browser. The link works only within its validity window and only for one pairing.",
+  "settings.remoteControl.pairing.staleHint":
+    "The current QR code is no longer valid (already used or expired). Refresh to generate a new one.",
+  "settings.remoteControl.pairing.expiresAt": "Valid until {time}",
+  "settings.remoteControl.pairing.qrFailed": "Failed to render the QR code",
+  "settings.remoteControl.pairing.qrAlt": "Pairing QR code",
+  "settings.remoteControl.pairing.deviceRequestDescription":
+    "This device is requesting exactly the same control capabilities as this desktop. Only allow devices you trust.",
+  "settings.remoteControl.pairing.unknownDevice": "Unknown device",
+  "settings.remoteControl.pairing.allow": "Allow",
+  "settings.remoteControl.pairing.reject": "Reject",
+  "settings.remoteControl.pairing.bridgedDescription":
+    "The phone is connected with exactly the same capabilities as the desktop user. After a disconnect it can resume with its authorized credentials without asking again.",
+  "settings.remoteControl.pairing.startFailed": "Failed to start pairing: {error}",
+  "settings.remoteControl.pairing.stopFailed": "Failed to stop, please try again",
+  "settings.remoteControl.pairing.decideFailed": "Failed to submit the decision, please try again",
+  "settings.remoteControl.pairing.error.unknown": "Pairing error: {code}",
+  "settings.remoteControl.pairing.error.roomInvalidated":
+    "Too many pairing failures; the room was invalidated. Refresh the QR code to start over.",
+  "settings.remoteControl.pairing.error.accessKeyRejected":
+    "The access key was rejected by the Worker. Save the access key again above.",
+  "settings.remoteControl.pairing.error.mirrorTargetMissing":
+    "No desktop session found to mirror. Switch to the remote workspace you want to mirror and start waiting again.",
+  "settings.remoteControl.pairing.error.frameProtocolViolation":
+    "Frame validation failed; the connection was aborted.",
+  "settings.remoteControl.pairing.error.remoteSessionMissing":
+    "The remote session to mirror no longer exists.",
+  "settings.remoteControl.pairing.error.remoteSessionOffline":
+    "The remote session to mirror is currently offline.",
+  "settings.remoteControl.pairing.error.remoteSessionWindowMismatch":
+    "The session to mirror does not belong to this window.",
+  "settings.remoteControl.pairing.error.remoteWorkspaceIdentityMismatch":
+    "The workspace identity does not match the remote session; mirroring is not possible.",
+  "settings.remoteControl.pairing.error.attachFailed":
+    "Failed to attach to the desktop session, please try again.",
+  "settings.remoteControl.pairing.error.roomRegenerationFailed":
+    "Failed to rebuild the pairing room, please try again.",
+  "settings.remoteControl.pairing.error.workerBaseUrlInvalid":
+    "The Worker domain is invalid; fix it above first.",
+  "settings.remoteControl.pairing.error.accessKeyMissing":
+    "No access key configured yet; save it first.",
+  "settings.remoteControl.security.section": "Security & privacy",
+  "settings.remoteControl.allowNewDevices.title": "Allow new devices to pair",
+  "settings.remoteControl.allowNewDevices.description":
+    "When off, new devices cannot pair via QR code; authorized devices can still reconnect with their local credentials.",
+  "settings.remoteControl.pairingTtl.title": "Pairing link validity",
+  "settings.remoteControl.pairingTtl.description":
+    "How long the QR code/link stays usable; refresh the QR code after it expires",
+  "settings.remoteControl.idleDisconnect.title": "Disconnect when idle",
+  "settings.remoteControl.idleDisconnect.description":
+    "Stop the room and disconnect automatically after the phone has been idle for this long",
+  "settings.remoteControl.idleDisconnect.never": "Never",
+  "settings.remoteControl.duration.minutes": "{minutes} min",
+  "settings.remoteControl.privacy.note":
+    "Privacy note: this version has no end-to-end encryption. The Cloudflare Worker relaying the traffic (TLS termination) can technically inspect frames in transit; it only performs auth and forwarding, and stores no task queues, snapshots, or message content.",
+  "settings.remoteControl.devices.section": "Authorized devices",
+  "settings.remoteControl.devices.loading": "Loading authorized devices…",
+  "settings.remoteControl.devices.empty": "No authorized devices yet",
+  "settings.remoteControl.devices.grantedAt": "Granted {time}",
+  "settings.remoteControl.devices.lastSeenAt": "Last seen {time}",
+  "settings.remoteControl.devices.revoke": "Revoke",
+  "settings.remoteControl.devices.revokeConfirmTitle": "Revoke this device?",
+  "settings.remoteControl.devices.revokeConfirmDescription":
+    "“{deviceName}” will be disconnected immediately and its local credential invalidated; connecting again requires a fresh QR scan and your confirmation.",
+  "settings.remoteControl.devices.revokeConfirmAction": "Revoke device",
+  "settings.remoteControl.devices.revokedToast": "Device revoked",
+  "settings.remoteControl.devices.revokeFailed": "Failed to revoke, please try again",
+  "settings.remoteControl.devices.refresh": "Refresh",
+  "settings.remoteControl.devices.refreshHint":
+    "The list is kept on the desktop and updates automatically after pairing.",
   "settings.browser.title": "Browser Use",
   "settings.browser.control.title": "Enable built-in browser control",
   "settings.browser.control.description":

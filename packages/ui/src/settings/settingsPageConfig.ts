@@ -19,6 +19,7 @@ import {
   Keyboard,
   FileSearch,
   HardDriveUpload,
+  Smartphone,
 } from "lucide-react";
 import { isSettingsSectionEnabled, type SettingsSectionId } from "@/lib/settingsNavigation.js";
 import { THEME_OPTIONS, type Theme } from "@/useTheme.js";
@@ -146,6 +147,14 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.computerUse.title",
     groupId: "basics",
   },
+  // 远程控制紧跟「电脑控制」：同为“控制这台桌面”的入口（方向相反——手机镜像桌面），
+  // 依赖桌面 Main 的配对/出站连接，仅桌面端可见。
+  {
+    id: "remoteControl",
+    icon: Smartphone,
+    titleId: "settings.remoteControl.title",
+    groupId: "basics",
+  },
   // 键盘快捷键紧跟「电脑控制」：同属本机操控/效率配置，收纳在基础设置尾部。
   {
     id: "shortcuts",
@@ -177,7 +186,11 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
 // 兼容既有只读消费者：默认配置代表不带桌面平台能力的 Web 视图；
 // macOS/Windows/Linux 必须继续通过 createSettingsPageConfig 动态加入 Computer Use。
 export const SETTINGS_SECTIONS = BASE_SETTINGS_SECTIONS.filter(
-  (section) => section.id !== "computerUse" && isSettingsSectionEnabled(section.id),
+  (section) =>
+    section.id !== "computerUse" &&
+    // 远程控制依赖桌面 Main 的 IPC（配对/出站连接），Web 视图不提供。
+    section.id !== "remoteControl" &&
+    isSettingsSectionEnabled(section.id),
 );
 
 interface SettingsPageConfigOptions {
@@ -192,8 +205,11 @@ export function createSettingsPageConfig({
   isWindowsDesktop = false,
 }: SettingsPageConfigOptions = {}) {
   const showComputerUse = isDesktop || isMacDesktop || isWindowsDesktop;
+  // 远程控制的配对与出站连接都由桌面 Main 承担，与 Computer Use 同门槛。
+  const showRemoteControl = showComputerUse;
   const settingsSections = BASE_SETTINGS_SECTIONS.filter((section) => {
     if (section.id === "computerUse" && !showComputerUse) return false;
+    if (section.id === "remoteControl" && !showRemoteControl) return false;
     return isSettingsSectionEnabled(section.id);
   });
   const settingsSectionGroups = BASE_SETTINGS_SECTION_GROUPS.map((group) => ({

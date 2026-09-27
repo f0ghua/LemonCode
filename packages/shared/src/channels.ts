@@ -61,6 +61,18 @@ import type {
 } from "./platform.js";
 import type { BrowserViewportSize } from "./browser-use/command-metadata.js";
 import type {
+  RemoteControlConfigSnapshot,
+  RemoteControlConfigSetRequest,
+  RemoteControlConfigSetResult,
+  RemoteControlTestResult,
+  RemoteDeviceRevokeRequest,
+  RemoteDevicesRefreshResult,
+  RemotePairingDecideRequest,
+  RemotePairingStartRequest,
+  RemotePairingStartResult,
+  RemotePairingStatePush,
+} from "./remoteControl.js";
+import type {
   CuaAccessibilitySettingsResult,
   OpenCuaPermissionOnboardingOptions,
   PrepareCuaHelperPermissionDragResult,
@@ -174,8 +186,26 @@ export const PlatformChannels = {
   RemoteConnectionLog: "zcode:remote-connection-log",
   /** Main → Renderer：远程 workspace session 已关闭 */
   RemoteSessionClosed: "zcode:remote-session-closed",
-  /** 检查目录是否已在其他窗口打开，如果是则激活该窗口 */
+  /** Renderer → Main：检查目录是否已在其他窗口打开，如果是则激活该窗口 */
   ActivateOrSetWorkspace: "zcode:activate-or-set-workspace",
+  /** Renderer → Main：开启手机配对等待（生成 roomId/capability 并出站注册房间） */
+  RemotePairingStart: "zcode:remote-pairing-start",
+  /** Renderer → Main：停止配对（room.stop、断出站、detach 桥） */
+  RemotePairingStop: "zcode:remote-pairing-stop",
+  /** Renderer → Main：对 pairing.requested 的用户裁决 */
+  RemotePairingDecide: "zcode:remote-pairing-decide",
+  /** Main → Renderer：配对面板状态推送（面板状态唯一来源，Renderer 不自行推断） */
+  RemotePairingState: "zcode:remote-pairing-state",
+  /** Renderer → Main：读取已授权设备列表 */
+  RemoteDevicesRefresh: "zcode:remote-devices-refresh",
+  /** Renderer → Main：吊销已授权设备 */
+  RemoteDeviceRevoke: "zcode:remote-device-revoke",
+  /** Renderer → Main：读取远程控制配置（接入 Key 只回 hasAccessKey，永不回明文） */
+  RemoteControlConfigGet: "zcode:remote-control-config-get",
+  /** Renderer → Main：写入远程控制配置（accessKey 为 write-only，进凭据集中存储） */
+  RemoteControlConfigSet: "zcode:remote-control-config-set",
+  /** Renderer → Main：测试桌面到 Worker 隧道的连通性（Main 持接入 Key 调 /api/health） */
+  RemoteControlTest: "zcode:remote-control-test",
   /** 建立 SSH 远程连接 */
   ConnectRemote: "zcode:connect-remote",
   /** 取消当前窗口正在进行中的远程连接 */
@@ -696,6 +726,43 @@ export interface PlatformChannelMap {
   [PlatformChannels.ActivateOrSetWorkspace]: {
     request: string;
     response: { activated: boolean };
+  };
+  [PlatformChannels.RemotePairingStart]: {
+    request: RemotePairingStartRequest;
+    response: RemotePairingStartResult;
+  };
+  [PlatformChannels.RemotePairingStop]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.RemotePairingDecide]: {
+    request: RemotePairingDecideRequest;
+    response: void;
+  };
+  // 单向推送（Main → Renderer，webContents.send）：配对面板状态唯一来源，无回执。
+  [PlatformChannels.RemotePairingState]: {
+    request: RemotePairingStatePush;
+    response: void;
+  };
+  [PlatformChannels.RemoteDevicesRefresh]: {
+    request: void;
+    response: RemoteDevicesRefreshResult;
+  };
+  [PlatformChannels.RemoteDeviceRevoke]: {
+    request: RemoteDeviceRevokeRequest;
+    response: void;
+  };
+  [PlatformChannels.RemoteControlConfigGet]: {
+    request: void;
+    response: RemoteControlConfigSnapshot;
+  };
+  [PlatformChannels.RemoteControlConfigSet]: {
+    request: RemoteControlConfigSetRequest;
+    response: RemoteControlConfigSetResult;
+  };
+  [PlatformChannels.RemoteControlTest]: {
+    request: void;
+    response: RemoteControlTestResult;
   };
   [PlatformChannels.OpenWorkspacePath]: {
     request: string;

@@ -840,6 +840,8 @@ export function createRemoteWorkspaceSessionManager(options: {
     process: ElectronUtilityProcess;
     port: MessagePortMain;
     remoteKind: RemoteTarget["kind"];
+    /** 手机镜像轨道按 attachmentId 发 detach-service-port(Main 帧泵清理路径需要)。 */
+    attachmentId: string;
   } {
     const route = routesBySessionId.get(params.remoteSessionId);
     if (!route) {
@@ -873,11 +875,12 @@ export function createRemoteWorkspaceSessionManager(options: {
     }
     const process = getWindowHost(win);
     const { port1, port2 } = createMessageChannel();
+    const attachmentId = randomUUID();
     process.postMessage(
       {
         type: HostMessageTypes.AttachServicePort,
         requestId: randomUUID(),
-        attachmentId: randomUUID(),
+        attachmentId,
         clientMode: params.clientMode,
         scope: {
           kind: "remote",
@@ -888,7 +891,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       },
       [port2],
     );
-    return { process, port: port1, remoteKind: descriptor.target.kind };
+    return { process, port: port1, remoteKind: descriptor.target.kind, attachmentId };
   }
 
   return {

@@ -92,6 +92,19 @@ export const SETTINGS_USER_ACTION_FEATURES = {
     "clear_cache",
     "clear_all_data",
   ],
+  "settings.remoteControl": [
+    "toggle_enable",
+    "save_worker_base_url",
+    "save_access_key",
+    "test_connection",
+    "pairing_start",
+    "pairing_stop",
+    "pairing_decide",
+    "toggle_allow_new_devices",
+    "change_pairing_ttl",
+    "change_idle_disconnect",
+    "revoke_device",
+  ],
 } as const;
 
 export type CoreUserActionFeatureId = keyof typeof CORE_USER_ACTION_FEATURES;
@@ -117,6 +130,10 @@ interface UserActionCatalogEntry {
 
 function operationKindFor(featureId: string, action: string): UserActionOperationKind {
   if (action === "clear_all_data" || action === "delete" || action === "uninstall") {
+    return "destructive";
+  }
+  // 吊销设备会立即断开该手机并使其凭据失效，破坏性与删除同级。
+  if (action === "revoke_device") {
     return "destructive";
   }
   if (

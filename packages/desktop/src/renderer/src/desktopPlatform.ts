@@ -1,7 +1,15 @@
 import { recordArmsCustomEventForE2E } from "@zcode/ui";
-import { DesktopCommandIds, buildLocalMediaPreviewUrl, type IPlatformService } from "@zcode/shared";
+import {
+  DEFAULT_REMOTE_CONTROL_PAIRING_TTL_MS,
+  DesktopCommandIds,
+  buildLocalMediaPreviewUrl,
+  type IPlatformService,
+} from "@zcode/shared";
 
 import { desktopBrowserPlatformBridge } from "./desktopBrowserPlatformBridge.js";
+
+// 手机远程控制桥的方法声明在 packages/client/src/globals.d.ts 的 window.zcode 上;
+// renderer 仍只经 IPlatformService 消费,不直触私有通道。
 
 export function createDesktopPlatform(options: {
   isLocalDevelopmentRuntime: boolean;
@@ -25,6 +33,44 @@ export function createDesktopPlatform(options: {
     bindRemoteWorkspaceSessionContext: (context) =>
       window.zcode.bindRemoteWorkspaceSessionContext?.(context) ?? Promise.resolve(),
     disposeRemoteSession: (sessionId) => window.zcode.disposeRemoteSession(sessionId),
+    startRemotePairing: window.zcode.startRemotePairing
+      ? (request) => window.zcode.startRemotePairing!(request)
+      : async () => ({ success: false, error: "not_supported" }),
+    stopRemotePairing: window.zcode.stopRemotePairing
+      ? () => window.zcode.stopRemotePairing!()
+      : async () => {},
+    decideRemotePairing: window.zcode.decideRemotePairing
+      ? (request) => window.zcode.decideRemotePairing!(request)
+      : async () => {},
+    onRemotePairingState: window.zcode.onRemotePairingState
+      ? (handler) => window.zcode.onRemotePairingState!(handler)
+      : () => () => {},
+    listRemoteDevices: window.zcode.listRemoteDevices
+      ? () => window.zcode.listRemoteDevices!()
+      : async () => ({ devices: [] }),
+    revokeRemoteDevice: window.zcode.revokeRemoteDevice
+      ? (deviceId) => window.zcode.revokeRemoteDevice!(deviceId)
+      : async () => {},
+    getRemoteControlConfig: window.zcode.getRemoteControlConfig
+      ? () => window.zcode.getRemoteControlConfig!()
+      : async () => ({
+          enabled: false,
+          workerBaseUrl: "",
+          hasAccessKey: false,
+          // 缺省面复用 shared 常量,避免与 main 侧 persistSchema 默认值漂移。
+          pairingTtlMs: DEFAULT_REMOTE_CONTROL_PAIRING_TTL_MS,
+          allowNewDevices: true,
+          idleDisconnectMs: 0,
+          pairing: null,
+          pairingUrl: null,
+        }),
+    setRemoteControlConfig: window.zcode.setRemoteControlConfig
+      ? (request) => window.zcode.setRemoteControlConfig!(request)
+      : async () => ({ success: false, error: "not_supported" }),
+    // 可选能力:缺失时保持 undefined,bridge 侧 feature-detect 据此禁用「测试连接」按钮。
+    testRemoteControlConnection: window.zcode.testRemoteControlConnection
+      ? () => window.zcode.testRemoteControlConnection!()
+      : undefined,
     isDockerAvailable: () => window.zcode.isDockerAvailable(),
     listWSLDistros: () => window.zcode.listWSLDistros(),
     listDockerContainers: () => window.zcode.listDockerContainers(),

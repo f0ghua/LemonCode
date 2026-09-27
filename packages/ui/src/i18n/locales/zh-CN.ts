@@ -1978,6 +1978,126 @@ const zhCN: Record<string, string> = {
     "未归类的文件，以及切换数据存储路径后遗留的旧副本。",
   "resourceManager.storage.confirmDescription.backups":
     "这些副本用于升级或迁移出错时恢复数据，删除后将无法回退。",
+  "settings.remoteControl.title": "远程控制",
+  "settings.remoteControl.unavailable":
+    "远程控制只能在 ZCode 桌面端使用，且需要桌面版本支持该功能。",
+  "settings.remoteControl.enable.title": "启用远程控制",
+  "settings.remoteControl.enable.description":
+    "通过 Cloudflare Worker 隧道让手机镜像这台桌面：手机获得与桌面使用者完全一致的操作能力。开启后桌面只向 Worker 发起出站连接。",
+  "settings.remoteControl.enable.missingPrerequisites":
+    "请先填写 Worker 域名并保存接入 Key，再开启远程控制。",
+  "settings.remoteControl.enable.enabledToast": "已开启远程控制",
+  "settings.remoteControl.enable.disabledToast": "已关闭远程控制，桌面将断开与 Worker 的连接",
+  "settings.remoteControl.workerBaseUrl.title": "Worker 域名",
+  "settings.remoteControl.workerBaseUrl.description":
+    "cfworker-remote Worker 的部署地址，只填域名，例如 https://your-worker.workers.dev",
+  "settings.remoteControl.workerBaseUrl.invalid":
+    "Worker 域名无效：需为 https:// 地址（本地调试可用 http://localhost）",
+  "settings.remoteControl.accessKey.title": "接入 Key",
+  "settings.remoteControl.accessKey.description":
+    "部署 Worker 时设置的接入 Key。保存进系统凭据存储，不写入明文配置，仅用于桌面与 Worker 之间的鉴权。",
+  "settings.remoteControl.accessKey.placeholder": "粘贴接入 Key",
+  "settings.remoteControl.accessKey.save": "保存 Key",
+  "settings.remoteControl.accessKey.saved": "接入 Key 已保存",
+  "settings.remoteControl.accessKey.configured": "已配置接入 Key（不再明文显示）",
+  "settings.remoteControl.accessKey.notConfigured": "尚未配置接入 Key",
+  "settings.remoteControl.config.save": "保存",
+  "settings.remoteControl.config.saved": "设置已保存",
+  "settings.remoteControl.config.saveFailed": "保存失败，请重试",
+  "settings.remoteControl.config.saveFailedWithReason": "保存失败：{error}",
+  "settings.remoteControl.testConnection.title": "测试连接",
+  "settings.remoteControl.testConnection.description": "用当前域名和接入 Key 向 Worker 发起一次健康检查",
+  "settings.remoteControl.testConnection.action": "测试连接",
+  "settings.remoteControl.testConnection.success": "连接成功（{latencyMs}ms）",
+  "settings.remoteControl.testConnection.failed": "连接失败：{error}",
+  "settings.remoteControl.pairing.section": "手机配对",
+  "settings.remoteControl.pairing.disabledHint":
+    "开启远程控制后，在这里生成二维码，让手机完成双方授权。",
+  "settings.remoteControl.pairing.status.idle": "未在等待",
+  "settings.remoteControl.pairing.status.unknown": "状态未知",
+  "settings.remoteControl.pairing.status.waiting": "等待手机连接…",
+  "settings.remoteControl.pairing.status.pairing": "设备请求接入",
+  "settings.remoteControl.pairing.status.bridged": "已就绪",
+  "settings.remoteControl.pairing.status.error": "配对出错",
+  "settings.remoteControl.pairing.idleDescription":
+    "生成配对二维码后，用手机扫码或打开复制链接，完成双方授权即可开始镜像。",
+  "settings.remoteControl.pairing.unknownDescription":
+    "设置页没有收到桌面的配对状态推送，无法确认当前是否正在镜像；若手机端已显示「已就绪」，镜像仍在进行。重新开启等待会停止当前房间并生成新二维码，正在镜像的手机会立即断开。",
+  "settings.remoteControl.pairing.restartConfirmTitle": "重新开启等待？",
+  "settings.remoteControl.pairing.restartConfirmDescription":
+    "将停止当前配对房间并生成新二维码；若手机正处于镜像中，其连接会立即断开，需要重新扫码并经你确认。",
+  "settings.remoteControl.pairing.restartConfirmAction": "停止并重新开启",
+  "settings.remoteControl.pairing.noMirrorTarget":
+    "手机镜像的是当前激活的远程工作区；请先连接一个远程工作区并保持激活，再开启等待。",
+  "settings.remoteControl.pairing.start": "开启等待",
+  "settings.remoteControl.pairing.refreshQr": "刷新二维码",
+  "settings.remoteControl.pairing.stop": "停止",
+  "settings.remoteControl.pairing.retry": "重新开始",
+  "settings.remoteControl.pairing.copyLink": "复制链接",
+  "settings.remoteControl.pairing.copiedToast": "已复制配对链接",
+  "settings.remoteControl.pairing.copyFailed": "复制失败，请手动选中链接复制",
+  "settings.remoteControl.pairing.qrHint":
+    "用手机扫码，或在手机浏览器打开下方链接。链接只在有效期内可用，且只能用于一次配对。",
+  "settings.remoteControl.pairing.staleHint":
+    "当前二维码已失效（已被使用或已过期），请刷新生成新的二维码。",
+  "settings.remoteControl.pairing.expiresAt": "有效期至 {time}",
+  "settings.remoteControl.pairing.qrFailed": "二维码生成失败",
+  "settings.remoteControl.pairing.qrAlt": "配对二维码",
+  "settings.remoteControl.pairing.deviceRequestDescription":
+    "该设备请求获得与桌面完全一致的控制权限。只允许你信任的设备。",
+  "settings.remoteControl.pairing.unknownDevice": "未知设备",
+  "settings.remoteControl.pairing.allow": "允许",
+  "settings.remoteControl.pairing.reject": "拒绝",
+  "settings.remoteControl.pairing.bridgedDescription":
+    "手机已接入，与桌面使用者拥有完全一致的操作能力。断开后手机可凭已授权凭据自动恢复，无需再次确认。",
+  "settings.remoteControl.pairing.startFailed": "发起配对失败：{error}",
+  "settings.remoteControl.pairing.stopFailed": "停止失败，请重试",
+  "settings.remoteControl.pairing.decideFailed": "提交裁决失败，请重试",
+  "settings.remoteControl.pairing.error.unknown": "配对出错：{code}",
+  "settings.remoteControl.pairing.error.roomInvalidated":
+    "配对失败次数过多，房间已作废。请刷新二维码重新开始。",
+  "settings.remoteControl.pairing.error.accessKeyRejected":
+    "接入 Key 被 Worker 拒绝，请在上方重新保存接入 Key。",
+  "settings.remoteControl.pairing.error.mirrorTargetMissing":
+    "未找到可镜像的桌面会话。请切到要镜像的远程工作区后重新开启等待。",
+  "settings.remoteControl.pairing.error.frameProtocolViolation": "数据帧校验失败，连接已中止。",
+  "settings.remoteControl.pairing.error.remoteSessionMissing": "要镜像的远程会话已不存在。",
+  "settings.remoteControl.pairing.error.remoteSessionOffline": "要镜像的远程会话当前离线。",
+  "settings.remoteControl.pairing.error.remoteSessionWindowMismatch":
+    "要镜像的会话不在当前窗口。",
+  "settings.remoteControl.pairing.error.remoteWorkspaceIdentityMismatch":
+    "工作区身份与远程会话不一致，无法镜像。",
+  "settings.remoteControl.pairing.error.attachFailed": "接入桌面会话失败，请重试。",
+  "settings.remoteControl.pairing.error.roomRegenerationFailed": "配对房间重建失败，请重试。",
+  "settings.remoteControl.pairing.error.workerBaseUrlInvalid": "Worker 域名无效，请先在上方修正。",
+  "settings.remoteControl.pairing.error.accessKeyMissing": "尚未配置接入 Key，请先保存。",
+  "settings.remoteControl.security.section": "安全与隐私",
+  "settings.remoteControl.allowNewDevices.title": "允许新设备配对",
+  "settings.remoteControl.allowNewDevices.description":
+    "关闭后新设备无法通过二维码配对；已授权设备仍可凭本地凭据重连。",
+  "settings.remoteControl.pairingTtl.title": "配对链接有效期",
+  "settings.remoteControl.pairingTtl.description": "二维码/链接的可用时长，过期后需要刷新二维码",
+  "settings.remoteControl.idleDisconnect.title": "空闲自动断开",
+  "settings.remoteControl.idleDisconnect.description":
+    "手机空闲超过该时长后，桌面自动停止房间并断开连接",
+  "settings.remoteControl.idleDisconnect.never": "从不",
+  "settings.remoteControl.duration.minutes": "{minutes} 分钟",
+  "settings.remoteControl.privacy.note":
+    "隐私说明：当前版本未做端到端加密。转发链路上的 Cloudflare Worker（TLS 终止）技术上可以看到传输内容；Worker 只做鉴权与转发，不保存任务队列、快照或消息内容。",
+  "settings.remoteControl.devices.section": "已授权设备",
+  "settings.remoteControl.devices.loading": "正在读取已授权设备…",
+  "settings.remoteControl.devices.empty": "暂无已授权设备",
+  "settings.remoteControl.devices.grantedAt": "授权于 {time}",
+  "settings.remoteControl.devices.lastSeenAt": "最近在线 {time}",
+  "settings.remoteControl.devices.revoke": "吊销",
+  "settings.remoteControl.devices.revokeConfirmTitle": "吊销这台设备？",
+  "settings.remoteControl.devices.revokeConfirmDescription":
+    "“{deviceName}”的现有连接会立即断开，本地凭据同时失效；再次连接需要重新扫码并经你确认。",
+  "settings.remoteControl.devices.revokeConfirmAction": "吊销设备",
+  "settings.remoteControl.devices.revokedToast": "已吊销该设备",
+  "settings.remoteControl.devices.revokeFailed": "吊销失败，请重试",
+  "settings.remoteControl.devices.refresh": "刷新",
+  "settings.remoteControl.devices.refreshHint": "列表保存在桌面端，配对成功后自动更新。",
   "settings.browser.title": "浏览器控制",
   "settings.browser.control.title": "开启内置浏览器控制",
   "settings.browser.control.description":

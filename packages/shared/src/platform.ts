@@ -27,6 +27,17 @@ import type {
 } from "./cuaAccessibilitySettings.js";
 import type { BrowserViewportSize } from "./browser-use/command-metadata.js";
 import type {
+  RemoteControlConfigSnapshot,
+  RemoteControlConfigSetRequest,
+  RemoteControlConfigSetResult,
+  RemoteControlTestResult,
+  RemoteDevicesRefreshResult,
+  RemotePairingDecideRequest,
+  RemotePairingStartRequest,
+  RemotePairingStartResult,
+  RemotePairingStatePush,
+} from "./remoteControl.js";
+import type {
   PostUpdateReleaseNotesPayload,
   UpdateCheckResultPayload,
   UpdateStatePayload,
@@ -588,6 +599,36 @@ export interface IPlatformService {
 
   /** 释放当前窗口里已创建的远程 session */
   disposeRemoteSession(sessionId: string): Promise<void>;
+
+  /**
+   * 手机远程控制（CF Workers 隧道）：开启配对等待并出站注册房间；仅 Desktop 实现。
+   * target 是手机要镜像的远端 workspace（Renderer 是该业务状态的所有者，由它提供给 Main 调度）。
+   */
+  startRemotePairing?(request?: RemotePairingStartRequest): Promise<RemotePairingStartResult>;
+
+  /** 停止配对：room.stop、断出站、detach 桥；仅 Desktop 实现。 */
+  stopRemotePairing?(): Promise<void>;
+
+  /** 对 pairing.requested 做用户裁决（允许/拒绝此设备）；仅 Desktop 实现。 */
+  decideRemotePairing?(request: RemotePairingDecideRequest): Promise<void>;
+
+  /** 订阅配对面板状态推送（面板状态唯一来源）；仅 Desktop 实现。 */
+  onRemotePairingState?(handler: (state: RemotePairingStatePush) => void): () => void;
+
+  /** 读取已授权设备列表（名称/授权时间/最近在线）；仅 Desktop 实现。 */
+  listRemoteDevices?(): Promise<RemoteDevicesRefreshResult>;
+
+  /** 吊销已授权设备：立即断开其现有连接并使凭据失效；仅 Desktop 实现。 */
+  revokeRemoteDevice?(deviceId: string): Promise<void>;
+
+  /** 读取远程控制配置与配对状态快照；接入 Key 只回 hasAccessKey，永不回明文；仅 Desktop 实现。 */
+  getRemoteControlConfig?(): Promise<RemoteControlConfigSnapshot>;
+
+  /** 写入远程控制配置；accessKey 为 write-only，进凭据集中存储；仅 Desktop 实现。 */
+  setRemoteControlConfig?(request: RemoteControlConfigSetRequest): Promise<RemoteControlConfigSetResult>;
+
+  /** 测试桌面到 Worker 隧道的连通性（Main 持接入 Key 调 /api/health）；仅 Desktop 实现。 */
+  testRemoteControlConnection?(): Promise<RemoteControlTestResult>;
 
   /** 检查本机 Docker daemon 是否可用 */
   isDockerAvailable(): Promise<boolean>;

@@ -270,6 +270,34 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.BindRemoteWorkspaceSessionContext, context),
   disposeRemoteSession: (sessionId: string): Promise<void> =>
     ipcRenderer.invoke(PlatformChannels.DisposeRemoteSession, sessionId),
+  /** 手机远程控制:开启配对等待(生成二维码载荷并出站注册房间) */
+  startRemotePairing: (request?: import("@zcode/shared").RemotePairingStartRequest) =>
+    ipcRenderer.invoke(PlatformChannels.RemotePairingStart, request ?? {}),
+  /** 手机远程控制:停止配对(room.stop、断出站、detach 桥) */
+  stopRemotePairing: (): Promise<void> =>
+    ipcRenderer.invoke(PlatformChannels.RemotePairingStop),
+  /** 手机远程控制:对 pairing.requested 的用户裁决 */
+  decideRemotePairing: (request: import("@zcode/shared").RemotePairingDecideRequest) =>
+    ipcRenderer.invoke(PlatformChannels.RemotePairingDecide, request),
+  /** 手机远程控制:订阅配对面板状态推送(面板状态唯一来源),返回 disposer */
+  onRemotePairingState: (callback: (state: import("@zcode/shared").RemotePairingStatePush) => void) => {
+    const handler = (_event: unknown, state: unknown) =>
+      callback(state as import("@zcode/shared").RemotePairingStatePush);
+    ipcRenderer.on(PlatformChannels.RemotePairingState, handler);
+    return () => ipcRenderer.removeListener(PlatformChannels.RemotePairingState, handler);
+  },
+  /** 手机远程控制:读取已授权设备列表 */
+  listRemoteDevices: () => ipcRenderer.invoke(PlatformChannels.RemoteDevicesRefresh),
+  /** 手机远程控制:吊销已授权设备(立即断开其连接并使凭据失效) */
+  revokeRemoteDevice: (deviceId: string) =>
+    ipcRenderer.invoke(PlatformChannels.RemoteDeviceRevoke, { deviceId }),
+  /** 手机远程控制:读取配置;接入 Key 只回 hasAccessKey,永不回明文 */
+  getRemoteControlConfig: () => ipcRenderer.invoke(PlatformChannels.RemoteControlConfigGet),
+  /** 手机远程控制:写入配置;accessKey 为 write-only,进凭据集中存储 */
+  setRemoteControlConfig: (request: import("@zcode/shared").RemoteControlConfigSetRequest) =>
+    ipcRenderer.invoke(PlatformChannels.RemoteControlConfigSet, request),
+  /** 手机远程控制:测试桌面到 Worker 隧道的连通性(Main 持接入 Key 调 /api/health) */
+  testRemoteControlConnection: () => ipcRenderer.invoke(PlatformChannels.RemoteControlTest),
   isDockerAvailable: (): Promise<boolean> => ipcRenderer.invoke(PlatformChannels.IsDockerAvailable),
   listWSLDistros: () => ipcRenderer.invoke(PlatformChannels.ListWSLDistros),
   listDockerContainers: () => ipcRenderer.invoke(PlatformChannels.ListDockerContainers),

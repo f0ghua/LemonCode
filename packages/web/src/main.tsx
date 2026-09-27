@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- Web 入口集中编排启动、路由与 workspace shell wiring，与 Root.tsx 同样先保持入口收口，避免跨层状态拆散。 */
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AppErrorBoundary,
@@ -29,6 +30,9 @@ import {
   resolveConversationShareCodeFromPath,
 } from "./share/conversationShareRoute.js";
 import type { IPlatformService, RemoteTarget, ServerRemoteInfo } from "@zcode/shared";
+import { parsePairingDeepLink, type PairingDeepLinkRoute } from "./remote/pairingDeepLink.js";
+import { MobilePairingPage } from "./remote/MobilePairingPage.js";
+import type { MobileDataServices } from "./remote/pairingSockets.js";
 import { WEB_DEFAULT_THEME, resolveWebInitialTheme } from "./webThemeSeed.js";
 
 function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): Theme {
@@ -96,6 +100,10 @@ interface WebBootstrapResult {
   restoreSession?: boolean;
   allowOpenWorkspace?: boolean;
 }
+
+// connectViaWebSocket 的返回即 app shell 需要的 services 面;不直接命名 IServiceAccessor,
+// 避免 packages/web 为类型引入对 @zcode/services 的直接依赖。
+type WebServices = Awaited<ReturnType<typeof connectViaWebSocket>>;
 
 function isWebOAuthCallback(params: URLSearchParams): boolean {
   return (
@@ -431,6 +439,53 @@ function renderWebBootstrapError(error: unknown): void {
   );
 }
 
+// 既有 bootstrap 与手机配对深链共用的 app shell:配对完成后按完全相同的形态渲染镜像 UI。
+function buildAppShellElement(
+  services: WebServices,
+  bootstrap: Pick<
+    WebBootstrapResult,
+    | "initialWorkspaceAbsPath"
+    | "initialWorkspaceIdentity"
+    | "initialTaskId"
+    | "restoreSession"
+    | "allowOpenWorkspace"
+  >,
+) {
+  const platform = createWebPlatform();
+  return (
+    <AppErrorBoundary>
+      <ZCodeIntlProvider
+        settingService={services.settingService}
+        broadcastService={services.broadcastService}
+      >
+        <Root
+          services={services}
+          platform={platform}
+          initialWorkspaceAbsPath={bootstrap.initialWorkspaceAbsPath}
+          initialWorkspaceIdentity={bootstrap.initialWorkspaceIdentity}
+          initialTaskId={bootstrap.initialTaskId}
+          restoreSession={bootstrap.restoreSession}
+          allowOpenWorkspace={bootstrap.allowOpenWorkspace}
+          preferDirectoryBrowser
+          supportsEmbeddedBrowser={false}
+          allowRemoteWorkspace={false}
+        />
+      </ZCodeIntlProvider>
+    </AppErrorBoundary>
+  );
+}
+
+// 手机配对深链入口(specs/mobile-remote-control-cf-workers.md「移动端」):
+// /p/<roomId>#c=<capability> 先走双方授权,accept 后凭设备凭据按既有 connectViaWebSocket
+// 流程连同源 /ws;授权完成后渲染与桌面同构的完整 app shell(镜像 UI,不做能力缩减)。
+function MobilePairingGate({ route }: { route: PairingDeepLinkRoute }) {
+  const [services, setServices] = useState<MobileDataServices | null>(null);
+  if (services) {
+    return buildAppShellElement(services, {});
+  }
+  return <MobilePairingPage route={route} onConnected={setServices} />;
+}
+
 async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
   if (isWebOAuthCallback(params)) {
@@ -440,6 +495,15 @@ async function bootstrapWebApp() {
 
   if (isConversationSharePath(window.location.pathname)) {
     await renderConversationSharePage();
+    return;
+  }
+
+  // 配对深链必须在既有 bootstrap 之前分流:配对阶段没有可用的 /api/server-info,
+  // 也不能触发未授权的既有 connectViaWebSocket(会被 Worker 拒绝升级)。
+  // 非 /p 路径此处不命中,以下既有行为保持不变。
+  const pairingRoute = parsePairingDeepLink(window.location.pathname, window.location.hash);
+  if (pairingRoute) {
+    root.render(<MobilePairingGate route={pairingRoute} />);
     return;
   }
 
@@ -455,30 +519,9 @@ async function bootstrapWebApp() {
     const services = await connectViaWebSocket(bootstrap.wsUrl, {
       onClose: () => {},
     });
-    const platform = createWebPlatform();
     document.title = "ZCode - Web + Server";
 
-    root.render(
-      <AppErrorBoundary>
-        <ZCodeIntlProvider
-          settingService={services.settingService}
-          broadcastService={services.broadcastService}
-        >
-          <Root
-            services={services}
-            platform={platform}
-            initialWorkspaceAbsPath={bootstrap.initialWorkspaceAbsPath}
-            initialWorkspaceIdentity={bootstrap.initialWorkspaceIdentity}
-            initialTaskId={bootstrap.initialTaskId}
-            restoreSession={bootstrap.restoreSession}
-            allowOpenWorkspace={bootstrap.allowOpenWorkspace}
-            preferDirectoryBrowser
-            supportsEmbeddedBrowser={false}
-            allowRemoteWorkspace={false}
-          />
-        </ZCodeIntlProvider>
-      </AppErrorBoundary>,
-    );
+    root.render(buildAppShellElement(services, bootstrap));
   } catch (error) {
     renderWebBootstrapError(error);
   }
