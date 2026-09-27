@@ -130,6 +130,9 @@ class ConfigStore {
     if (config.memory) {
       if (config.memory.use !== undefined) this.set(ConfigKey.MemoryUse, config.memory.use, scope);
     }
+    if (config.sessionRecall?.enabled !== undefined) {
+      this.set(ConfigKey.SessionRecallEnabled, config.sessionRecall.enabled, scope);
+    }
     if (config.mcp) {
       if (config.mcp.servers !== undefined)
         this.set(ConfigKey.McpServers, config.mcp.servers, scope);
@@ -291,6 +294,10 @@ export class ConfigPortImpl implements ConfigPort {
       memory: {
         use: this.store.get(ConfigKey.MemoryUse) ?? DefaultConfig.memory.use,
       },
+      sessionRecall: {
+        enabled:
+          this.store.get(ConfigKey.SessionRecallEnabled) ?? DefaultConfig.sessionRecall.enabled,
+      },
       mcp: {
         servers: this.store.get(ConfigKey.McpServers) ?? DefaultConfig.mcp.servers,
       },
@@ -407,6 +414,8 @@ function getDefaultValue(key: ConfigKey): unknown {
       return defaults.features.mcp;
     case ConfigKey.MemoryUse:
       return defaults.memory.use;
+    case ConfigKey.SessionRecallEnabled:
+      return defaults.sessionRecall.enabled;
     case ConfigKey.McpServers:
       return defaults.mcp.servers;
     case ConfigKey.PluginsEnabled:

@@ -10,7 +10,6 @@ import {
   createCoreError,
   runWithModelInvocationContext,
   type ModelInputMessage,
-  type MessageWithParts,
   type ReadSessionContextInput,
   type ReadSessionContextOutput,
   type SessionId,
@@ -27,6 +26,12 @@ import {
   type SessionContextMaterial,
   type TranscriptChunk,
 } from "../../session-context/read-session-context.js";
+import { buildReadSessionContextOutput } from "../../session-context/read-session-context-output.js";
+import {
+  sessionContextExtractionInstructions,
+  sessionContextSynthesisInstructions,
+} from "../../session-context/read-session-context-prompts.js";
+import { loadScopedSessionContextSnapshot } from "../../session-context/read-session-context-snapshot.js";
 import type { ToolEntry, ToolExecutionContext, ToolHandler } from "../types.js";
 import { auxiliaryModelOptions } from "../../model/auxiliary-model-options.js";
 
@@ -52,20 +57,20 @@ const readSessionContextHandler: ToolHandler = async (input, context) => {
     );
   }
 
-  let session: SessionInfo | null;
-  let messages: MessageWithParts[];
+  let snapshot;
   try {
-    session = await context.sessionStore.getSession(parsed.sessionId as SessionId);
-    if (!session) {
+    snapshot = await loadScopedSessionContextSnapshot({
+      sessionId: parsed.sessionId as SessionId,
+      sessionStore: context.sessionStore,
+      workspace: context,
+    });
+    if (!snapshot) {
       return formatLocalSessionNotFound({
         query: parsed.query,
         sessionId: parsed.sessionId,
         strategy: parsed.strategy,
       });
     }
-    messages = await context.sessionStore.messages({
-      sessionID: parsed.sessionId as SessionId,
-    });
   } catch (error) {
     if (context.abortSignal.aborted) throw error;
     return {
@@ -82,6 +87,8 @@ const readSessionContextHandler: ToolHandler = async (input, context) => {
     } satisfies ReadSessionContextOutput;
   }
 
+  const { messages, session } = snapshot;
+
   const outputCharBudget = outputCharBudgetFromMaxTokens(parsed.maxTokens);
   const material = buildSessionContextMaterial({
     messages,
@@ -92,7 +99,7 @@ const readSessionContextHandler: ToolHandler = async (input, context) => {
   });
 
   if (!context.model || material.readableMessageCount === 0) {
-    return buildOutput({
+    return buildReadSessionContextOutput({
       content: material.localContent,
       material,
       parsed,
@@ -111,7 +118,7 @@ const readSessionContextHandler: ToolHandler = async (input, context) => {
       session,
     });
     if (liteContent.trim().length > 0) {
-      return buildOutput({
+      return buildReadSessionContextOutput({
         content: liteContent,
         material,
         parsed,
@@ -122,7 +129,7 @@ const readSessionContextHandler: ToolHandler = async (input, context) => {
     }
   } catch (error) {
     if (context.abortSignal.aborted) throw error;
-    return buildOutput({
+    return buildReadSessionContextOutput({
       content: material.localContent,
       error: errorToMessage(error),
       material,
@@ -133,7 +140,7 @@ const readSessionContextHandler: ToolHandler = async (input, context) => {
     });
   }
 
-  return buildOutput({
+  return buildReadSessionContextOutput({
     content: material.localContent,
     material,
     parsed,
@@ -300,8 +307,8 @@ async function generateLiteExtraction(input: {
         `Material: ${input.sourceLabel}`,
         "",
         input.synthesize
-          ? synthesisInstructions(input.parsed.strategy)
-          : extractionInstructions(input.parsed.strategy),
+          ? sessionContextSynthesisInstructions(input.parsed.strategy)
+          : sessionContextExtractionInstructions(input.parsed.strategy),
         "",
         "Transcript material:",
         truncateForLite(input.material),
@@ -349,36 +356,6 @@ async function generateLiteExtraction(input: {
   return isNoRelevantContext(text) ? "" : text;
 }
 
-function extractionInstructions(strategy: ReadSessionContextInput["strategy"]): string {
-  if (strategy === "handoff") {
-    return [
-      "Extract a handoff capsule from this material.",
-      "Include current objective, decisions already made, files/commands/tests mentioned, blockers, and concrete next steps.",
-      "Keep unrelated chat out.",
-    ].join("\n");
-  }
-
-  return [
-    "Extract only context relevant to the query.",
-    "Prefer concrete facts: files, commands, decisions, errors, constraints, user preferences, and unresolved next steps.",
-    "Mention message ids when helpful.",
-  ].join("\n");
-}
-
-function synthesisInstructions(strategy: ReadSessionContextInput["strategy"]): string {
-  if (strategy === "handoff") {
-    return [
-      "Synthesize these extracted notes into one bounded handoff capsule.",
-      "Deduplicate repeated facts and keep the result directly actionable.",
-    ].join("\n");
-  }
-
-  return [
-    "Synthesize these extracted notes into one bounded context answer for the query.",
-    "Deduplicate repeated facts and omit weakly related material.",
-  ].join("\n");
-}
-
 function formatChunkForLite(chunk: TranscriptChunk): string {
   return [
     `# Transcript chunk ${chunk.index + 1}`,
@@ -387,33 +364,6 @@ function formatChunkForLite(chunk: TranscriptChunk): string {
     "",
     chunk.content,
   ].join("\n");
-}
-
-function buildOutput(input: {
-  content: string;
-  error?: string;
-  material: SessionContextMaterial;
-  parsed: ReadSessionContextInput;
-  session: SessionInfo;
-  source: ReadSessionContextOutput["source"];
-  truncated: boolean;
-}): ReadSessionContextOutput {
-  return {
-    status: "success",
-    sessionId: input.session.id,
-    title: input.session.title,
-    directory: input.session.directory,
-    path: input.session.path,
-    strategy: input.parsed.strategy,
-    query: input.parsed.query,
-    source: input.source,
-    content: input.content,
-    messageCount: input.material.messageCount,
-    selectedMessageCount: input.material.selectedMessageCount,
-    truncated: input.truncated,
-    error: input.error,
-    references: input.material.references,
-  };
 }
 
 function truncateForLite(material: string): string {

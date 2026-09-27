@@ -1720,6 +1720,12 @@ const zhCN: Record<string, string> = {
   "settings.memory.workspaceMemory": "工作区记忆",
   "settings.memoryDescription":
     "在工作区中保存并复用长期上下文，新会话生效。开启后可能增加模型调用和 Token 成本。",
+  "settings.memory.sessionRecall": "自动历史召回",
+  "settings.memory.sessionRecallDescription":
+    "在每轮开始前，从同一工作区的历史会话中查找与当前问题相关的内容。新建或冷恢复的会话生效。",
+  "settings.memory.sessionRecallHelpLabel": "了解自动历史召回",
+  "settings.memory.sessionRecallHelp":
+    "开启后，Agent 会在每轮开始前检索同一工作区的历史会话，并把匹配内容作为有界的只读参考。它不会修改或复制历史记录，已运行会话保持原设置。",
   "settings.memory.viewer.localOnly":
     "记忆详情仅支持在本地桌面端查看，请前往本地桌面端的“记忆”设置。",
   "settings.memory.viewer.title": "已保存的工作区记忆",

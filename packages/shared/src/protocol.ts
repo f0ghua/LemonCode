@@ -329,6 +329,8 @@ export interface AppSettings {
   nativeSearchEnhancementsEnabled?: boolean;
   /** 新建或冷恢复 Session 是否启用 Memory；默认关闭。 */
   memoryEnabled?: boolean;
+  /** 新建或冷恢复 Session 是否自动召回同工作区的相关历史会话；默认关闭。 */
+  sessionRecallEnabled?: boolean;
   onboardingOccupation?:
     | "office"
     | "developer"

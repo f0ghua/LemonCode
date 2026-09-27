@@ -5,7 +5,7 @@
 // 子代理的工具面必须落到 child runtime 的工具注册上，否则实盘 transcript
 // 里裁判 actor 也拿到了整套交互工具。两类风险：
 //   1. 悬挂：AskUserQuestion / EnterPlanMode 在 headless child 里没有人可问，turn 永远不结束；
-//   2. 越权与递归：CreateWorkflow 让 actor 能再提交一条工作流，ReadSessionContext 越界读父会话。
+//   2. 越权与递归：CreateWorkflow 让 actor 能再提交一条工作流，历史搜索/深读工具可越界枚举父会话。
 // 本模块是那个缺失的映射，由 driver 侧的 runtime 工厂在造 AgentRuntime 时展开。
 //
 // persona 无工具档位：每个 actor 都拿完整工作工具集减去下面这份减法表；
@@ -13,11 +13,14 @@
 // 只读靠提示）。
 
 import {
+  AMEND_WORKFLOW_TOOL_NAME,
   ASK_USER_QUESTION_TOOL_NAME,
+  CREATE_WORKFLOW_TOOL_NAME,
   ENTER_PLAN_MODE_TOOL_NAME,
   EXIT_PLAN_MODE_TOOL_NAME,
   READ_SESSION_CONTEXT_TOOL_NAME,
   RESOLVE_WORKFLOW_QUESTION_TOOL_NAME,
+  SESSION_HISTORY_SEARCH_TOOL_NAME,
 } from "@zcode/contracts";
 
 /** AgentRuntimeConfig 的工具面切片。 */
@@ -27,16 +30,18 @@ interface WorkflowActorToolPolicy {
 
 /**
  * 从全集里减掉的工具：前三个会阻塞在一个不存在的人类上（headless child 无人应答，
- * turn 不结束）；CreateWorkflow 会让 actor 递归提交工作流；ReadSessionContext 越界读父会话。
+ * turn 不结束）；CreateWorkflow 会让 actor 递归提交工作流；历史搜索/深读工具会暴露父或兄弟会话。
  * 其余（Bash / Edit / Write / 搜索 / web）照常保留——actor 就是要干活的。
  */
 const ACTOR_DISALLOWED_TOOLS: readonly string[] = [
   ASK_USER_QUESTION_TOOL_NAME,
   ENTER_PLAN_MODE_TOOL_NAME,
   EXIT_PLAN_MODE_TOOL_NAME,
-  "CreateWorkflow",
+  CREATE_WORKFLOW_TOOL_NAME,
   // 修订入口与 CreateWorkflow 同一种嵌套编排，同一个根因入列。
-  "AmendWorkflow",
+  AMEND_WORKFLOW_TOOL_NAME,
+  // 历史搜索与深读必须守同一条会话隔离边界；只禁用深读会让 actor 仍可枚举父/兄弟会话摘要。
+  SESSION_HISTORY_SEARCH_TOOL_NAME,
   READ_SESSION_CONTEXT_TOOL_NAME,
   // 子代理不许替主代理回答升级问题。
   // 与上面几条的根因不同：这不是悬挂也不是越权读，而是**身份**——升级的整个意义是把判断权

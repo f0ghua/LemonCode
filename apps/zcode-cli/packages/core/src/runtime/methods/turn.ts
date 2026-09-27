@@ -51,7 +51,7 @@ import {
   maybeStartDeferredSessionTitleGeneration,
   maybeStartSessionTitleGeneration,
 } from "./session-title.js";
-import type { RegularTurnLoopState } from "./turn-loop-state.js";
+import { resolveTurnRecallQuery, type RegularTurnLoopState } from "./turn-loop-state.js";
 import { finishOutputTokenRecovery } from "./turn-output-token-continuation.js";
 import { recordTurnUsageFact } from "./usage-observability.js";
 import { persistStableForkCompletionBoundary } from "./stable-fork-boundary.js";
@@ -605,6 +605,7 @@ export async function executeTurnCommand(
         if (this.activeForegroundExecution) {
           this.activeForegroundExecution.currentModelSelection = modelSelectionFromModel(loopModel);
         }
+        const turnRecallQuery = resolveTurnRecallQuery(displayInput, options);
         loopState = {
           activeTurn,
           ...(options?.automationId ? { automationId: options.automationId } : {}),
@@ -621,6 +622,9 @@ export async function executeTurnCommand(
           executionFailoverTransitionCount: 0,
           executionFailoverUnsafePolicies: new Set(),
           input,
+          memoryRecallAttempted: false,
+          sessionHistoryRecallAttempted: false,
+          ...(turnRecallQuery ? { turnRecallQuery } : {}),
           modelResponse: "",
           model: loopModel,
           ...(options?.modelExecution?.requestDependencies === undefined

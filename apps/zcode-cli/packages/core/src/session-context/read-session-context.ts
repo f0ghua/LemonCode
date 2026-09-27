@@ -5,13 +5,14 @@ import {
   type ReadSessionContextReference,
   type SessionInfo,
 } from "@zcode/contracts";
-import { activeSessionMessages } from "../agent/session-history-hydrator.js";
+import { activeSessionMessagesForSession } from "./active-session-messages.js";
 import { dedupeParts, formatPartForContext } from "./parts.js";
 import { truncateText } from "./utils.js";
 export {
   buildReferencedSessionContextReminderBody,
   extractSessionReferences,
 } from "./references.js";
+export { canReadSessionContextFromWorkspace } from "./workspace-session-scope.js";
 
 const DEFAULT_OUTPUT_CHAR_BUDGET = 24_000;
 const MAX_OUTPUT_CHAR_BUDGET = 48_000;
@@ -60,7 +61,7 @@ export function buildSessionContextMaterial(input: {
   outputCharBudget?: number;
 }): SessionContextMaterial {
   const outputCharBudget = clampOutputCharBudget(input.outputCharBudget);
-  const activeMessages = activeSessionMessages(input.messages);
+  const activeMessages = activeSessionMessagesForSession(input.messages, input.session);
   const snippets = activeMessages
     .map((message, index) => formatMessageSnippet(message, index))
     .filter((snippet): snippet is MessageSnippet => snippet !== null);

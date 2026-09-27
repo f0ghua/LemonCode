@@ -305,6 +305,31 @@ export interface ListSessionsInput {
   limit?: number;
 }
 
+export const SESSION_TRANSCRIPT_SNAPSHOT_MAX_MESSAGE_ROWS = 256;
+export const SESSION_TRANSCRIPT_SNAPSHOT_MAX_PART_ROWS = 1_024;
+export const SESSION_TRANSCRIPT_SNAPSHOT_MAX_DATA_BYTES = 262_144;
+
+export interface SessionTranscriptSnapshotLimits {
+  maxMessageRows: number;
+  maxPartRows: number;
+  /** Combined UTF-8 bytes of admitted message/part JSON data columns. */
+  maxDataBytes: number;
+}
+
+export interface ReadSessionTranscriptSnapshotInput {
+  sessionID: SessionId;
+  limits: SessionTranscriptSnapshotLimits;
+}
+
+export interface SessionTranscriptSnapshot {
+  session: SessionInfo | null;
+  messages: MessageWithParts[];
+  loadedMessageCount: number;
+  loadedPartCount: number;
+  loadedDataBytes: number;
+  truncated: boolean;
+}
+
 export interface ClaimLegacySessionWorkspaceInput {
   sessionIDs: SessionId[];
   directory: string;
@@ -1126,6 +1151,13 @@ export interface SessionStorePort {
     messageID: MessageId;
   }): Promise<MessageWithParts | null>;
   messages(input: { sessionID: SessionId }): Promise<MessageWithParts[]>;
+  /**
+   * Optional bounded, atomic transcript capability. Production SQLite hosts implement this while
+   * legacy hosts may retain the messages + getSession compatibility path.
+   */
+  readTranscriptSnapshot?(
+    input: ReadSessionTranscriptSnapshotInput,
+  ): Promise<SessionTranscriptSnapshot>;
   saveSessionEntry?(input: SessionEntryInfo): Promise<void>;
   sessionEntries?(input: {
     sessionID: SessionId;

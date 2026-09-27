@@ -678,6 +678,7 @@ export function SettingsPage({
     return [...names];
   }, [sharedSettings?.recentProjects, workspaceTabs]);
   const memoryEnabled = sharedSettings?.memoryEnabled === true;
+  const sessionRecallEnabled = sharedSettings?.sessionRecallEnabled === true;
   const nativeSearchEnhancementsEnabled = sharedSettings?.nativeSearchEnhancementsEnabled !== false;
   const askUserQuestionAutoResolutionEnabled =
     sharedSettings?.askUserQuestionAutoResolutionEnabled !== false;
@@ -920,6 +921,21 @@ export function SettingsPage({
               console.warn("[settings] 回写引导记录失败", String(cause));
             });
         },
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleSessionRecallEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_session_recall",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ sessionRecallEnabled: enabled }),
         completed: {
           resultSource: "shared_settings",
           stateAfter: enabled ? "enabled" : "disabled",
@@ -1807,7 +1823,9 @@ export function SettingsPage({
                               memoryEnabled={memoryEnabled}
                               memoryService={localHostServices.memoryService}
                               onMemoryEnabledChange={handleMemoryEnabledChange}
+                              onSessionRecallEnabledChange={handleSessionRecallEnabledChange}
                               projectMemoryViewerAvailable={Boolean(isDesktop)}
+                              sessionRecallEnabled={sessionRecallEnabled}
                               workspaceDisplayNames={memoryWorkspaceDisplayNames}
                             />
                           </ServiceProvider>

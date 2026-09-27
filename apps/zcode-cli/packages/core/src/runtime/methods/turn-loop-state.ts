@@ -96,6 +96,12 @@ export interface RegularTurnLoopState {
   /** 工具执行结果不确定时，只封锁对应 source command + target 身份。 */
   executionFailoverUnsafePolicies: Set<string>;
   input: string;
+  /** 当前真实用户 query 的 Project Memory recall 最多尝试一次。 */
+  memoryRecallAttempted: boolean;
+  /** 当前真实用户 query 的 prior-session recall 最多尝试一次。 */
+  sessionHistoryRecallAttempted: boolean;
+  /** 两条 recall pipeline 共享的真实用户 query；内部 continuation 不设置。 */
+  turnRecallQuery?: string;
   modelResponse: string;
   /** 本轮固定使用的可调用模型；配置变化只影响以后创建的 Loop。 */
   model: Model;
@@ -138,6 +144,59 @@ export interface RegularTurnLoopState {
   turnOutputStyle?: OutputStylePromptConfig;
   turnTraceContext: TraceContext;
   userMessageId: MessageId;
+}
+
+export function resolveTurnRecallQuery(
+  displayInput: string,
+  options?: {
+    automationId?: string;
+    inputSource?: string;
+    inputVisibility?: string;
+    offPeakTaskId?: string;
+    skipInputRecord?: boolean;
+  },
+): string | undefined {
+  if (
+    options?.inputVisibility === "model-only" ||
+    options?.skipInputRecord === true ||
+    options?.inputSource !== undefined ||
+    options?.automationId !== undefined ||
+    options?.offPeakTaskId !== undefined
+  ) {
+    return undefined;
+  }
+  const query = displayInput.trim();
+  return query.length > 0 ? query : undefined;
+}
+
+export function filterTurnRecallOverlayEntries(
+  entries: readonly RuntimeMessageEntry[],
+): readonly RuntimeMessageEntry[] {
+  const containsRecall = entries.some(isTurnRecallOverlayEntry);
+  return containsRecall ? entries.filter((entry) => !isTurnRecallOverlayEntry(entry)) : entries;
+}
+
+export async function withTurnRecallOverlaysDetached<TResult>(
+  state: TurnRequestState,
+  operation: () => Promise<TResult>,
+): Promise<TResult> {
+  const overlayEntries = state.entries.filter(isTurnRecallOverlayEntry);
+  if (overlayEntries.length === 0) return await operation();
+
+  // Recall 只属于 live provider request；compact summary/canonical replacement 不能把它固化。
+  state.entries = filterTurnRecallOverlayEntries(state.entries);
+  try {
+    return await operation();
+  } finally {
+    state.entries = [...filterTurnRecallOverlayEntries(state.entries), ...overlayEntries];
+  }
+}
+
+function isTurnRecallOverlayEntry(entry: RuntimeMessageEntry): boolean {
+  return (
+    entry.kind === "attachment" &&
+    (entry.metadata.source === "memory_recall" || entry.metadata.source === "session_recall")
+  );
 }
 
 export function isAutomationMutationRestrictedTurn(state: RegularTurnLoopState): boolean {

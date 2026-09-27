@@ -9,3 +9,30 @@ export interface MemoryManifestEntry {
   mtimeMs: number;
   type?: MemoryRecallType;
 }
+
+export interface IndexedMemoryDocument extends MemoryManifestEntry {
+  content: string;
+  indexedBytes: number;
+  metadataTokens: ReadonlySet<string>;
+  sourceMtimeMs?: number;
+  termFrequencies: ReadonlyMap<string, number>;
+  tokenCount: number;
+}
+
+export interface RankedMemoryDocument {
+  document: IndexedMemoryDocument;
+  score: number;
+}
+
+export interface MemoryRecallResult extends MemoryManifestEntry {
+  content: string;
+  score: number;
+}
+
+export interface ProjectMemoryRecallOutcome {
+  attachment?: string;
+  candidateCount: number;
+  indexedCount: number;
+  matchCount: number;
+  results: readonly MemoryRecallResult[];
+}

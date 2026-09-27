@@ -55,14 +55,16 @@ import {
   getStartPlanBusyAdmissionRetryDelayMs,
   isStartPlanBusyStreamRecoveryFailure,
 } from "./streaming-recovery.js";
-import type { RegularTurnLoopState } from "./turn-loop-state.js";
+import type { CompactAttemptOutcome, RegularTurnLoopState } from "./turn-loop-state.js";
 import {
   evaluateRapidRefill,
+  filterTurnRecallOverlayEntries,
   MAX_CONSECUTIVE_RAPID_REFILLS,
   RAPID_REFILL_TOOL_TURN_THRESHOLD,
   recordCompactHistoryRound,
   recordCompactSuccess,
   recordModelHistoryRound,
+  withTurnRecallOverlaysDetached,
 } from "./turn-loop-state.js";
 import {
   querySourceForTask,
@@ -142,6 +144,34 @@ export async function runModelBackedTurnStep(
       throw error;
     }
   });
+}
+
+export async function persistTurnModelRequestEvent(
+  runtime: AgentRuntimeInternal,
+  state: RegularTurnLoopState,
+  input: {
+    model: RegularTurnLoopState["model"];
+    modelTraceContext: RegularTurnLoopState["turnTraceContext"];
+    querySource: string;
+    recordedMessages: RunModelTextRequestOptions["messages"];
+    toolCount: number;
+  },
+): Promise<void> {
+  const modelRequestEvent = runtime.createEvent(
+    SessionEventType.ModelRequest,
+    {
+      // 自动续写与 memory recall 都只属于 live request，持久化只接受 recorded projection。
+      messages: input.recordedMessages,
+      providerId: String(input.model.providerId),
+      modelId: String(input.model.modelId),
+      querySource: input.querySource,
+      toolCount: input.toolCount,
+      iteration: state.toolCallCount === 0 ? 0 : Math.ceil(state.toolCallCount / 10),
+    },
+    input.modelTraceContext,
+  );
+  await runtime.appendEvent(modelRequestEvent, input.modelTraceContext);
+  state.events.push(modelRequestEvent);
 }
 
 async function runModelBackedTurnStepImpl(
@@ -228,21 +258,13 @@ async function runModelBackedTurnStepImpl(
     modelTraceContext,
   );
 
-  const modelRequestEvent = this.createEvent(
-    SessionEventType.ModelRequest,
-    {
-      // 自动续写提示只属于本次请求，不应写入持久化的 ModelRequest 轨迹。
-      messages: options.recordedMessages,
-      providerId: String(model.providerId),
-      modelId: String(model.modelId),
-      querySource,
-      toolCount: options.tools.length,
-      iteration: state.toolCallCount === 0 ? 0 : Math.ceil(state.toolCallCount / 10),
-    },
+  await persistTurnModelRequestEvent(this, state, {
+    model,
     modelTraceContext,
-  );
-  await this.appendEvent(modelRequestEvent, modelTraceContext);
-  state.events.push(modelRequestEvent);
+    querySource,
+    recordedMessages: options.recordedMessages,
+    toolCount: options.tools.length,
+  });
   finishPersistence();
   const streamingToolCoordinator = createStreamingToolCoordinator(this, state, {
     assistantMessageId,
@@ -1045,19 +1067,12 @@ async function recoverModelStepAfterContextExceeded(
   }
 
   state.reactiveCompactAttemptedInCurrentModelStep = true;
-  const compactOutcome = await this.reactiveCompactAfterContextExceeded(
+  const compactOutcome = await runReactiveCompactAttempt(this, state, {
+    activeEntries,
     contextError,
-    state.turnTraceContext,
-    state.events,
-    state.turnAbortSignal,
-    {
-      activeEntries,
-      modelStepIndex,
-      rapidRefillCount: rapidRefill.consecutiveRapidRefills,
-      model: state.model,
-      turnRequestState: state.turnRequestState,
-    },
-  );
+    modelStepIndex,
+    rapidRefillCount: rapidRefill.consecutiveRapidRefills,
+  });
   if (compactOutcome !== "compacted") {
     return false;
   }
@@ -1074,4 +1089,32 @@ async function recoverModelStepAfterContextExceeded(
     ).start(),
   );
   return true;
+}
+
+export async function runReactiveCompactAttempt(
+  runtime: AgentRuntimeInternal,
+  state: RegularTurnLoopState,
+  input: {
+    activeEntries: readonly RuntimeMessageEntry[];
+    contextError: unknown;
+    modelStepIndex: number;
+    rapidRefillCount: number;
+  },
+): Promise<CompactAttemptOutcome> {
+  return await withTurnRecallOverlaysDetached(state.turnRequestState, async () =>
+    runtime.reactiveCompactAfterContextExceeded(
+      input.contextError,
+      state.turnTraceContext,
+      state.events,
+      state.turnAbortSignal,
+      {
+        // captured request 与当前 state 必须同时剥离，否则估算或 canonical replacement 仍会固化 recall。
+        activeEntries: filterTurnRecallOverlayEntries(input.activeEntries),
+        modelStepIndex: input.modelStepIndex,
+        rapidRefillCount: input.rapidRefillCount,
+        model: state.model,
+        turnRequestState: state.turnRequestState,
+      },
+    ),
+  );
 }

@@ -297,5 +297,12 @@ function isMemoryMutationToolPart(part: MessageWithParts["parts"][number]): part
 }
 
 function countWords(text: string): number {
-  return text.split(/\s+/u).filter(Boolean).length;
+  const hanCount = Array.from(text.matchAll(/\p{Script=Han}/gu)).length;
+  // 旧逻辑只按空白切词，中文整句会被当成一个词而永远无法进入 extraction。
+  // 先移除已逐字计数的汉字，再保留英文/数字“每个空白段一个词”的原有准入语义。
+  const nonHanWordCount = text
+    .replace(/\p{Script=Han}/gu, " ")
+    .split(/\s+/u)
+    .filter((segment) => /[\p{L}\p{N}]/u.test(segment)).length;
+  return hanCount + nonHanWordCount;
 }

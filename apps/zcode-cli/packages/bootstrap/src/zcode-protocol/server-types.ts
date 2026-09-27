@@ -82,6 +82,7 @@ export interface ZCodeProtocolToolInputTransmissionState {
 export interface ZCodeProtocolSessionRecord {
   app: ZCodeApp;
   memoryEnabled: boolean;
+  sessionRecallEnabled: boolean;
   nativeSearchEnhancementsEnabled: boolean;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   createdAt: number;

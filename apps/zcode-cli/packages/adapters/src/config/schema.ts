@@ -43,6 +43,10 @@ const memorySchema = z.object({
   use: z.boolean().optional(),
 });
 
+const sessionRecallSchema = z.object({
+  enabled: z.boolean().optional(),
+});
+
 const mcpServerBaseSchema = {
   // 设置页和 MCP adapter 已支持协议选择；配置入口漏掉该字段会因 strict 校验丢弃整个 server。
   protocolVersion: z.enum(["auto", "legacy", "2026-07-28"]).optional(),
@@ -292,6 +296,7 @@ export const ZCodeConfigFileSchema = z
     network: networkSchema.optional(),
     features: featuresSchema.optional(),
     memory: memorySchema.optional(),
+    sessionRecall: sessionRecallSchema.optional(),
     mcp: mcpSchema.optional(),
     plugins: pluginsSchema.optional(),
     skills: skillsSchema.optional(),
@@ -404,6 +409,7 @@ function parsedConfigFileToRuntimePatch(parsed: ZCodeConfigFile): RuntimeConfigP
   if (parsed.network) config.network = parsed.network;
   if (parsed.features) config.features = parsed.features;
   if (parsed.memory) config.memory = parsed.memory;
+  if (parsed.sessionRecall) config.sessionRecall = parsed.sessionRecall;
   if (parsed.mcp) config.mcp = parsed.mcp;
   if (parsed.plugins) config.plugins = normalizePluginConfig(parsed.plugins);
   const skillsConfig = parseSkillsRuntimeConfig(parsed.skills);

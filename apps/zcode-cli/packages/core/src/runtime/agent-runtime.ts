@@ -73,6 +73,7 @@ import type {
   AmendWorkflowRunSettingsResult,
 } from "./methods/dynamic-workflow-run-settings.js";
 import { createRuntimeCommandQueue } from "./command-queue.js";
+import type { ProjectMemoryRecallIndex } from "../memory/recall/index.js";
 import type { RuntimeCommandQueue } from "./command-queue.js";
 import type {
   ModelConnectivityTestInput,
@@ -201,6 +202,7 @@ export class AgentRuntime {
   private latestContextBuildResult?: ContextBuildResult;
   private memoryRoot?: string;
   private memoryIndexContent?: string;
+  private projectMemoryRecallIndex?: ProjectMemoryRecallIndex;
   private memoryExtractionScheduler?: ProjectMemoryExtractionScheduler;
   private contextSourcePort?: ContextSourcePort;
   private skillPort?: SkillPort;

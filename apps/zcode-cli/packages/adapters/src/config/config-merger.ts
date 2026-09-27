@@ -63,6 +63,9 @@ export function mergeConfigs(...configs: PrioritizedConfig[]): RuntimeConfigPatc
     if (config.memory) {
       result.memory = { ...result.memory, ...config.memory };
     }
+    if (config.sessionRecall) {
+      result.sessionRecall = { ...result.sessionRecall, ...config.sessionRecall };
+    }
     if (config.mcp) {
       result.mcp = {
         ...result.mcp,

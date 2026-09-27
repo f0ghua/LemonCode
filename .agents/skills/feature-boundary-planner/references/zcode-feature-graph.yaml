@@ -243,6 +243,8 @@ nodes:
     kind: delivery-boundary
     label: workspaceIdentity fallback isolation key
     codeSeeds:
+      - file: packages/shared/src/task-realtime-core.ts
+        symbol: resolveWorkspaceKey
       - file: packages/ui/src/lib/remoteWorkspaceHistory.ts
         symbol: buildWorkspaceSessionKey
       - file: packages/services/src/session/taskIndexRepo.ts
@@ -256,6 +258,224 @@ nodes:
     codeSeeds:
       - symbol: TaskIndexRepo
         file: packages/services/src/session/taskIndexRepo.ts
+  - id: service.filesystem-directory-listing
+    kind: service
+    label: Bounded FileSystemPort directory listing
+    aliases:
+      - FileSystemPort listDirectory limit
+      - bounded directory listing
+      - 有界目录枚举
+    codeSeeds:
+      - file: apps/zcode-cli/packages/contracts/src/interfaces/file-system.port.ts
+        symbol: FileSystemPort
+      - file: apps/zcode-cli/packages/adapters/src/fs/directory-listing.ts
+        symbol: listNodeDirectoryEntries
+    invariants:
+      - "Callers opt into a positive entry limit; the Node adapter bounds mapped entries before
+        returning, while omitted limits preserve complete-list compatibility behavior."
+  - id: capability.project-memory-recall
+    kind: capability
+    label: Project memory recall into active model context
+    aliases:
+      - project memory
+      - memory recall
+      - workspace memory
+      - 项目记忆
+      - 工作区记忆
+      - 记忆召回
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/memory/recall/project-memory-recall.ts
+        symbol: ProjectMemoryRecallIndex
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts
+        symbol: appendProjectMemoryRecallForTurn
+    invariants:
+      - "Project Memory files are the durable fact source; runtime caches and turn overlays are
+        derived views and cannot become additional writers."
+  - id: persistence.project-memory-files
+    kind: persistence
+    label: Workspace-scoped Project Memory Markdown files
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/memory/project-root.ts
+        symbol: resolveProjectMemoryRoot
+      - file: apps/zcode-cli/packages/core/src/runtime/helpers/project-memory-agent.ts
+        symbol: createProjectMemoryAgentToolExecutor
+    invariants:
+      - "MEMORY.md is the bounded index and topic Markdown files hold durable detail under the
+        workspace-scoped memory root."
+  - id: state.project-memory-runtime-cache
+    kind: state-owner
+    label: AgentRuntime Project Memory cache
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/runtime/internal.ts
+        symbol: AgentRuntimeInternal
+      - file: apps/zcode-cli/packages/core/src/memory/recall/project-memory-recall.ts
+        symbol: ProjectMemoryRecallIndex
+    invariants:
+      - "memoryRoot and memoryIndexContent are runtime-local derived state; durable Memory files
+        remain authoritative across sessions."
+  - id: state.project-memory-turn-overlay
+    kind: state-owner
+    label: Per-turn provider-visible Project Memory overlay
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-loop-state.ts
+        symbol: TurnRequestState
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-loop-state.ts
+        symbol: withTurnRecallOverlaysDetached
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts
+        symbol: appendProjectMemoryRecallForTurn
+      - file: apps/zcode-cli/packages/core/src/system-reminder/source.ts
+        symbol: SYSTEM_REMINDER_PER_REQUEST_SOURCES
+    invariants:
+      - "The overlay is derived for the active request and must not be persisted as canonical
+        session history or treated as a second Memory store."
+  - id: service.read-session-context
+    kind: service
+    label: ReadSessionContext persisted-history reader
+    aliases:
+      - ReadSessionContext
+      - read prior session
+      - session context
+      - 读取历史会话
+      - 会话上下文
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/tool/handlers/read-session-context.ts
+        symbol: readSessionContextToolEntry
+      - file: apps/zcode-cli/packages/core/src/session-context/read-session-context.ts
+        symbol: buildSessionContextMaterial
+      - file: apps/zcode-cli/packages/core/src/session-context/read-session-context-snapshot.ts
+        symbol: loadScopedSessionContextSnapshot
+      - file: apps/zcode-cli/packages/core/src/session-context/workspace-session-scope.ts
+        symbol: canReadSessionContextFromWorkspace
+    invariants:
+      - "ReadSessionContext is read-only, validates the target against the current workspace before
+        reading messages, refreshes session metadata before projection to close concurrent rewind
+        races, and returns content as untrusted background context rather than instructions."
+  - id: service.session-history-search
+    kind: service
+    label: SessionHistorySearch persisted-history discovery
+    aliases:
+      - SessionHistorySearch
+      - session history search
+      - prior session discovery
+      - 历史会话搜索
+      - 会话历史检索
+    codeSeeds:
+      - file: apps/zcode-cli/packages/contracts/src/tools/session-history-search.ts
+        symbol: SESSION_HISTORY_SEARCH_TOOL_NAME
+      - file: apps/zcode-cli/packages/core/src/tool/handlers/session-history-search.ts
+        symbol: sessionHistorySearchToolEntry
+    invariants:
+      - "SessionHistorySearch is read-only, excludes the current session, applies identity-first
+        workspace isolation, prefers an atomic bounded transcript snapshot while retaining a
+        fail-closed legacy refresh path, distinguishes an empty successful result from unavailable
+        storage, and projects only eligible transcript text."
+  - id: service.session-transcript-bounded-snapshot
+    kind: service
+    label: Bounded atomic persisted transcript snapshot
+    aliases:
+      - readTranscriptSnapshot
+      - bounded transcript snapshot
+      - atomic session transcript
+      - 有界会话快照
+    codeSeeds:
+      - file: apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts
+        symbol: SessionTranscriptSnapshot
+      - file: apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/transcript-snapshot.ts
+        symbol: readTranscriptSnapshot
+    invariants:
+      - "The SQLite adapter returns metadata and a deterministic transcript prefix from one read
+        savepoint, bounds admitted persisted JSON payload, and never owns ranking or a second cache."
+  - id: capability.session-history-auto-recall
+    kind: capability
+    label: Opt-in turn-start prior-session recall
+    aliases:
+      - session recall
+      - automatic session recall
+      - prior-session auto recall
+      - 自动会话召回
+      - 历史会话自动召回
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-session-history-recall.ts
+        symbol: appendSessionHistoryRecallForTurn
+      - file: apps/zcode-cli/packages/core/src/session-context/session-history-auto-recall.ts
+        symbol: SESSION_HISTORY_AUTO_RECALL_BOUNDS
+    invariants:
+      - "Automatic recall is default-off, uses stricter bounds than the explicit tool, runs once for
+        an eligible real-user turn, and never performs an automatic deep read."
+  - id: capability.session-history-recall-benchmark
+    kind: capability
+    label: Reproducible production-SQLite recall latency gate
+    aliases:
+      - session recall benchmark
+      - recall latency gate
+      - P3 performance gate
+      - 会话召回基准
+    codeSeeds:
+      - file: apps/zcode-cli/packages/bootstrap/scripts/session-recall-benchmark.mjs
+        symbol: MEASURED_RUNS
+      - file: apps/zcode-cli/scripts/session-recall-benchmark-stats.mjs
+        symbol: evaluateSessionRecallBenchmark
+    invariants:
+      - "The benchmark uses a temporary production SQLite store and fixed bounded corpus, fails closed
+        on threshold or output-invariant violations, and never reads a user session database."
+  - id: surface.session-history-recall-settings
+    kind: ui-surface
+    label: Automatic session history recall setting
+    aliases:
+      - automatic history recall switch
+      - session recall setting
+      - 自动历史召回开关
+    codeSeeds:
+      - file: packages/ui/src/settings/MemorySettingsSection.tsx
+        symbol: MemorySettingsSection
+      - file: packages/ui/src/SettingsPage.tsx
+        symbol: SettingsPage
+    invariants:
+      - "The Memory settings row writes AppSettings through the Setting service and provides a
+        keyboard-focusable help tooltip; it does not own a second runtime setting."
+  - id: state.session-history-recall-setting
+    kind: state-owner
+    label: Session history recall enable setting
+    codeSeeds:
+      - file: packages/shared/src/protocol.ts
+        symbol: AppSettings
+      - file: packages/shared/src/zcode-protocol/index.ts
+        symbol: zcodeSessionRuntimePreferencesResultSchema
+      - file: apps/zcode-cli/packages/contracts/src/config/index.ts
+        symbol: DefaultRuntimeConfig
+      - file: apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts
+        symbol: resolveAppRuntimeConfig
+      - file: apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts
+        symbol: resolveSessionStartupPreferences
+    invariants:
+      - "sessionRecall.enabled is false by default and remains independent from Project Memory
+        features.memory and memory.use."
+      - "App-created sessions materialize the Host-owned AppSettings.sessionRecallEnabled value;
+        headless CLI sessions retain scoped JSON configuration precedence."
+  - id: state.session-history-turn-overlay
+    kind: state-owner
+    label: Per-turn provider-visible prior-session recall overlay
+    codeSeeds:
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-loop-state.ts
+        symbol: TurnRequestState
+      - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-loop-state.ts
+        symbol: withTurnRecallOverlaysDetached
+      - file: apps/zcode-cli/packages/core/src/system-reminder/source.ts
+        symbol: SYSTEM_REMINDER_PER_REQUEST_SOURCES
+    invariants:
+      - "The session_recall attachment is derived for the live request, detached from compaction and
+        persistence, and released with TurnRequestState."
+  - id: persistence.session-store
+    kind: persistence
+    label: CLI persisted session and message store
+    codeSeeds:
+      - file: apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts
+        symbol: SessionStorePort
+      - file: apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts
+        symbol: SqliteSessionStore
+    invariants:
+      - "Persisted sessions and messages are distinct from AgentRuntime message history, Project
+        Memory files, runtime caches and per-turn overlays."
   - id: service.zcode-agent-connection-scope
     kind: service
     label: Host-trusted ZCode Agent attachment connection scope
@@ -571,6 +791,158 @@ edges:
     type: must-not-replace
     rank: invariant-only
     condition: Task index metadata is distinct from canonical conversation content and runtime state.
+  - from: capability.project-memory-recall
+    to: service.filesystem-directory-listing
+    type: bounds-memory-directory-enumeration-through
+    rank: must-inspect
+    condition:
+      Project Memory passes the remaining entry budget to FileSystemPort; core retains a defensive
+      slice but does not rely on post-read truncation as the adapter bound.
+  - from: capability.project-memory-recall
+    to: persistence.project-memory-files
+    type: reads-durable-memory-from
+    rank: must-inspect
+  - from: capability.project-memory-recall
+    to: state.project-memory-runtime-cache
+    type: derives-runtime-state-in
+    rank: must-inspect
+    condition:
+      Runtime memory state is a bounded, rebuildable view of the files and cannot become a second
+      persistence path.
+  - from: capability.project-memory-recall
+    to: state.project-memory-turn-overlay
+    type: injects-request-context-through
+    rank: must-inspect
+    condition:
+      Turn-specific recalled content uses the per-request reminder lifecycle and must not alter the
+      reusable context prefix or durable transcript.
+  - from: state.project-memory-runtime-cache
+    to: persistence.project-memory-files
+    type: derived-from
+    rank: must-inspect
+  - from: state.project-memory-turn-overlay
+    to: state.project-memory-runtime-cache
+    type: selects-from
+    rank: should-inspect
+  - from: persistence.project-memory-files
+    to: boundary.workspace-key
+    type: isolated-by
+    rank: must-inspect
+    condition:
+      resolveProjectMemoryRoot prefers trimmed workspaceIdentity and otherwise derives the local
+      workspace path fallback.
+  - from: service.read-session-context
+    to: persistence.session-store
+    type: reads-persisted-history-from
+    rank: must-inspect
+    condition: The tool resolves the requested session and reads its persisted messages without writing.
+  - from: service.session-history-search
+    to: persistence.session-store
+    type: reads-bounded-candidates-from
+    rank: must-inspect
+    condition:
+      Candidate session count and core text projection are bounded; production SQLite reads candidates
+      through the bounded snapshot capability while legacy hosts retain messages plus metadata refresh.
+  - from: service.session-history-search
+    to: service.session-transcript-bounded-snapshot
+    type: prefers-capability
+    rank: must-inspect
+    condition:
+      Atomic snapshots avoid pairing transcript rows with stale rewind or scope metadata and propagate
+      storage truncation into the existing search result.
+  - from: service.session-transcript-bounded-snapshot
+    to: persistence.session-store
+    type: reads-owned-state-from
+    rank: must-inspect
+    condition:
+      SessionStore remains the only owner; the snapshot is a bounded read projection with no writes,
+      migration, cache, or alternate persisted truth.
+  - from: service.session-history-search
+    to: boundary.workspace-key
+    type: isolated-by
+    rank: must-inspect
+    condition:
+      Identified workspaces require exact trimmed identity; only identity-less local sessions may use
+      the stable workspace-root directory fallback.
+  - from: service.session-history-search
+    to: service.read-session-context
+    type: returns-candidates-for-explicit-read
+    rank: should-inspect
+    condition:
+      Search returns bounded untrusted previews and session IDs; a deliberate ReadSessionContext call
+      remains the deep-read path.
+  - from: capability.session-history-auto-recall
+    to: service.session-history-search
+    type: reuses-bounded-search-semantics-from
+    rank: must-inspect
+    condition:
+      Automatic recall uses the same identity, active-branch, eligible-text, ranking and unavailable
+      rules with stricter candidate, projection, preview and result bounds.
+  - from: capability.session-history-auto-recall
+    to: capability.session-history-recall-benchmark
+    type: engineering-rollout-gated-by
+    rank: must-inspect
+    condition:
+      The fixed quality fixture and production-SQLite p95/p99 report decide whether bounded scan is
+      sufficient; passing does not implicitly change the default-off product setting.
+  - from: capability.session-history-recall-benchmark
+    to: service.session-transcript-bounded-snapshot
+    type: measures-production-path-through
+    rank: must-inspect
+    condition:
+      The corpus runs the shared automatic bounds against the real SQLite snapshot implementation,
+      not a mock store or a user database.
+  - from: capability.session-history-auto-recall
+    to: state.session-history-recall-setting
+    type: gated-by
+    rank: must-inspect
+    condition:
+      The app or scoped CLI setting is explicit opt-in and defaults to false; a materialized runtime
+      keeps its startup snapshot.
+  - from: surface.session-history-recall-settings
+    to: state.session-history-recall-setting
+    type: writes-app-preference-through
+    rank: must-inspect
+    condition:
+      The switch persists AppSettings through the Setting service; Host runtime preferences project it
+      into new or cold-restored protocol sessions.
+  - from: capability.session-history-auto-recall
+    to: state.session-history-turn-overlay
+    type: injects-request-context-through
+    rank: must-inspect
+    condition: Matching previews are untrusted runtime-local attachments and never become canonical history.
+  - from: state.session-history-turn-overlay
+    to: persistence.session-store
+    type: derived-from-without-writing
+    rank: must-inspect
+  - from: capability.session-history-auto-recall
+    to: capability.project-memory-recall
+    type: independently-configured-from
+    rank: invariant-only
+    condition:
+      Project Memory switches do not enable or disable session history recall; both overlays share only
+      the TurnRequestState lifecycle boundary.
+  - from: persistence.session-store
+    to: boundary.workspace-key
+    type: carries-workspace-scope-for
+    rank: must-inspect
+    condition:
+      Candidate listing or retrieval must prefer exact workspace identity; an exact directory fallback
+      is only for explicitly supported local legacy rows and must not cross remote identities.
+  - from: capability.project-memory-recall
+    to: service.read-session-context
+    type: must-remain-distinct-from
+    rank: invariant-only
+    condition:
+      Project Memory recall derives context from workspace Memory files; ReadSessionContext reads a
+      user-selected persisted session transcript. Neither store substitutes for the other.
+  - from: capability.project-memory-recall
+    to: service.session-history-search
+    type: must-remain-distinct-from
+    rank: invariant-only
+    condition:
+      Project Memory derives context from workspace Memory files; explicit SessionHistorySearch and the
+      separately configured automatic recall derive context from persisted sessions.
   - from: capability.composer-trigger-routing
     to: surface.composer-at-context-picker
     type: renders-in

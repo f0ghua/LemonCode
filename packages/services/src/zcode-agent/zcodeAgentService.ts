@@ -2131,6 +2131,7 @@ export function createZCodeAgentService(
                     askUserQuestionAutoResolutionEnabled: true,
                     nativeSearchEnhancementsEnabled: true,
                     memoryEnabled: false,
+                    sessionRecallEnabled: false,
                   },
                 );
               } catch (error) {

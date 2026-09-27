@@ -369,6 +369,10 @@ export const TID_RESOURCE_MANAGER_STORAGE_CONFIRM_CANCEL =
   "resource-manager-storage-confirm-cancel";
 /** Memory 设置模块中的总开关 */
 export const TID_SETTINGS_MEMORY_SWITCH = "settings-memory-switch";
+/** Memory 设置模块中的自动历史召回开关 */
+export const TID_SETTINGS_SESSION_RECALL_SWITCH = "settings-session-recall-switch";
+/** 自动历史召回说明 Tooltip 的触发器 */
+export const TID_SETTINGS_SESSION_RECALL_HELP = "settings-session-recall-help";
 /** Memory 设置模块刷新按钮 */
 export const TID_SETTINGS_MEMORY_REFRESH = "settings-memory-refresh";
 /** Memory Workspace Scope 菜单触发器 */

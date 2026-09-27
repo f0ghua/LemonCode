@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CircleHelp } from "lucide-react";
 import { type IMemoryService, type ProjectMemoryWorkspaceSummary } from "@zcode/services";
-import { TID_SETTINGS_MEMORY_SWITCH } from "@zcode/shared";
+import {
+  TID_SETTINGS_MEMORY_SWITCH,
+  TID_SETTINGS_SESSION_RECALL_HELP,
+  TID_SETTINGS_SESSION_RECALL_SWITCH,
+} from "@zcode/shared";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
 import { Switch } from "@/components/ui/switch.js";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   MemorySettingsViewer,
@@ -47,13 +58,17 @@ export function MemorySettingsSection({
   memoryEnabled,
   memoryService,
   onMemoryEnabledChange,
+  onSessionRecallEnabledChange,
   projectMemoryViewerAvailable,
+  sessionRecallEnabled,
   workspaceDisplayNames = [],
 }: {
   memoryEnabled: boolean;
   memoryService: MemoryCatalogService;
   onMemoryEnabledChange: (enabled: boolean) => Promise<void>;
+  onSessionRecallEnabledChange: (enabled: boolean) => Promise<void>;
   projectMemoryViewerAvailable: boolean;
+  sessionRecallEnabled: boolean;
   workspaceDisplayNames?: readonly string[];
 }) {
   const { intl } = useZCodeIntl();
@@ -170,6 +185,45 @@ export function MemorySettingsSection({
               data-testid={TID_SETTINGS_MEMORY_SWITCH}
               onCheckedChange={(checked) => {
                 void onMemoryEnabledChange(checked);
+              }}
+            />
+          }
+        />
+        <SettingsRow
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              {intl.formatMessage({ id: "settings.memory.sessionRecall" })}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={intl.formatMessage({
+                        id: "settings.memory.sessionRecallHelpLabel",
+                      })}
+                      className="inline-flex size-5 items-center justify-center rounded-md text-foreground-subtle outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-border-hover"
+                      data-testid={TID_SETTINGS_SESSION_RECALL_HELP}
+                    >
+                      <CircleHelp aria-hidden="true" className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>
+                    {intl.formatMessage({ id: "settings.memory.sessionRecallHelp" })}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
+          }
+          description={intl.formatMessage({
+            id: "settings.memory.sessionRecallDescription",
+          })}
+          control={
+            <Switch
+              aria-label={intl.formatMessage({ id: "settings.memory.sessionRecall" })}
+              checked={sessionRecallEnabled}
+              data-testid={TID_SETTINGS_SESSION_RECALL_SWITCH}
+              onCheckedChange={(checked) => {
+                void onSessionRecallEnabledChange(checked);
               }}
             />
           }

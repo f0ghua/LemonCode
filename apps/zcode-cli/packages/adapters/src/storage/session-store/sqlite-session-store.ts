@@ -45,6 +45,8 @@ import type {
   SessionInputStatus,
   SessionTaskLinkRecord,
   SessionRevert,
+  ReadSessionTranscriptSnapshotInput,
+  SessionTranscriptSnapshot,
   SessionStorePort,
   SharedContextImportCommitBundle,
   SharedContextImportTransition,
@@ -100,6 +102,7 @@ import * as sessionEntryRepository from "./repositories/session-entries.js";
 import * as sessionInputRepository from "./repositories/session-inputs.js";
 import * as sessionRepository from "./repositories/sessions.js";
 import * as todoRepository from "./repositories/todos.js";
+import * as transcriptSnapshotRepository from "./repositories/transcript-snapshot.js";
 import * as usageRepository from "./repositories/usage.js";
 
 function forkChildSessionId(entry: SessionEntryInfo): SessionId | null {
@@ -645,6 +648,12 @@ export class SqliteSessionStore
 
   async messages(input: { sessionID: SessionId }): Promise<MessageWithParts[]> {
     return messageRepository.messages(this.db, input);
+  }
+
+  async readTranscriptSnapshot(
+    input: ReadSessionTranscriptSnapshotInput,
+  ): Promise<SessionTranscriptSnapshot> {
+    return transcriptSnapshotRepository.readTranscriptSnapshot(this.db, input);
   }
 
   async saveSessionEntry(input: SessionEntryInfo): Promise<void> {

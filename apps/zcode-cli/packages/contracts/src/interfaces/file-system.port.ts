@@ -12,6 +12,7 @@ export type FileSystemErrorCode =
   | "too_large"
   | "stale_write"
   | "invalid_path"
+  | "invalid_limit"
   | "invalid_pattern"
   | "unsupported"
   | "cancelled"
@@ -195,6 +196,8 @@ export interface FileSystemRemoveFileResult {
 export interface FileSystemListDirectoryRequest {
   /** Normalized absolute directory path. Relative paths are resolved by the caller. */
   path: string;
+  /** Optional positive safe integer cap enforced by the adapter before mapping the full directory. */
+  limit?: number;
   trace?: TraceContext;
 }
 
@@ -209,6 +212,8 @@ export interface FileSystemListDirectoryResult {
   entries: FileSystemListDirectoryEntry[];
   numEntries: number;
   path: string;
+  /** True when the bounded reader reached its cap and additional entries may exist. */
+  truncated: boolean;
 }
 
 export interface FileSystemSearchFilesRequest {

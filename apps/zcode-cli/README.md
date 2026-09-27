@@ -179,6 +179,28 @@ Supported server types:
 
 MCP tools are registered before the first model request and exposed as `mcp__<server>__<tool>`. Use `/mcp list`, `/mcp status`, `/mcp connect <server>`, and `/mcp disconnect <server>` inside the CLI to inspect or manage configured servers for the current session.
 
+## Session History Recall
+
+Automatic prior-session recall is experimental and disabled by default. It is separate from Project
+Memory and only adds bounded, same-workspace previews to the current model request; it does not modify
+stored sessions. In the ZCode app, use Settings → Memory → Automatic history recall; the app setting
+applies to newly created or cold-restored sessions. For headless CLI runs, enable it in
+`~/.zcode/cli/config.json` (or a project config) and set it back to `false` to disable it:
+
+```json
+{
+  "sessionRecall": {
+    "enabled": true
+  }
+}
+```
+
+The explicit `SessionHistorySearch` tool remains available independently of this setting.
+
+Maintainers can reproduce the fixed production-SQLite latency gate from the repository root with
+`pnpm --dir apps/zcode-cli bench:session-recall`. The command uses a temporary database and never opens
+the user's configured session store.
+
 ## Hooks Configuration
 
 zcode reads hooks from the same main JSON config file as MCP, usually `~/.zcode/cli/config.json`. Hooks are disabled by default; set `hooks.enabled` to `true` and add process hooks under `hooks.events`.

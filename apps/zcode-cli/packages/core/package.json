@@ -21,6 +21,10 @@
     "./create-workflow-graph-bounds": {
       "types": "./dist/tool/handlers/create-workflow-graph-bounds.d.ts",
       "import": "./dist/tool/handlers/create-workflow-graph-bounds.js"
+    },
+    "./session-history-search": {
+      "types": "./dist/session-history-search.d.ts",
+      "import": "./dist/session-history-search.js"
     }
   },
   "scripts": {

@@ -1823,6 +1823,12 @@ const enUS: Record<string, string> = {
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
     "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.",
+  "settings.memory.sessionRecall": "Automatic history recall",
+  "settings.memory.sessionRecallDescription":
+    "Before each turn, find relevant content in prior sessions from the same workspace. Applies to new or cold-restored sessions.",
+  "settings.memory.sessionRecallHelpLabel": "About automatic history recall",
+  "settings.memory.sessionRecallHelp":
+    "When enabled, the Agent searches prior sessions from the same workspace before each turn and receives bounded, read-only matching context. It does not modify or copy history, and running sessions keep their current setting.",
   "settings.memory.viewer.disabled": "Enable Workspace Memory to view saved memories.",
   "settings.memory.viewer.localOnly":
     "Memory details are available only in the local desktop app. Open Memory settings there to view them.",

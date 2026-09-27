@@ -183,6 +183,10 @@ export function resolveAppRuntimeConfig(input: {
       use: options.runtimeConfig?.memory?.use ?? configResult.config.memory.use,
       workspaceIdentity: workspaceIdentity?.trim() || undefined,
     },
+    sessionRecall: {
+      enabled:
+        options.runtimeConfig?.sessionRecall?.enabled ?? configResult.config.sessionRecall.enabled,
+    },
   };
   return {
     configuredMcpServers,
@@ -285,6 +289,7 @@ export function runtimeConfigLogContext(
     memoryExtractionEnabled: runtimeConfig.memory?.extractionEnabled !== false,
     memoryRoot,
     memoryUse: runtimeConfig.memory?.use !== false,
+    sessionRecallEnabled: runtimeConfig.sessionRecall?.enabled === true,
     mcsMode: runtimeConfig.midConversationSystem?.mode,
     mode: runtimeConfig.mode,
     model: runtimeConfig.modelSelection

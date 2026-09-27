@@ -40,6 +40,9 @@ export const ConfigKey = {
   // Memory
   MemoryUse: "memory.use",
 
+  // Session recall (independent from Project Memory)
+  SessionRecallEnabled: "sessionRecall.enabled",
+
   // MCP
   McpServers: "mcp.servers",
 
@@ -112,7 +115,7 @@ export type ConfigValue<K extends ConfigKey> = K extends "modelStream.idleTimeou
                   | "skills.enabled"
                   | "skills.includeInstructions"
               ? boolean
-              : K extends "memory.use"
+              : K extends "memory.use" | "sessionRecall.enabled"
                 ? boolean
                 : K extends "skills.metadataBudget"
                   ? number
@@ -229,6 +232,9 @@ export interface RuntimeConfig {
   memory: {
     use: boolean;
   };
+  sessionRecall: {
+    enabled: boolean;
+  };
   mcp: {
     servers: Record<string, McpServerConfig>;
   };
@@ -264,6 +270,7 @@ export interface RuntimeConfigPatch {
   network?: Partial<RuntimeConfig["network"]>;
   features?: Partial<RuntimeConfig["features"]>;
   memory?: Partial<RuntimeConfig["memory"]>;
+  sessionRecall?: Partial<RuntimeConfig["sessionRecall"]>;
   mcp?: Partial<RuntimeConfig["mcp"]>;
   plugins?: Partial<RuntimeConfig["plugins"]>;
   skills?: Partial<RuntimeConfig["skills"]>;
@@ -315,6 +322,9 @@ export const DefaultRuntimeConfig: RuntimeConfig = {
   },
   memory: {
     use: true,
+  },
+  sessionRecall: {
+    enabled: false,
   },
   mcp: {
     servers: {},

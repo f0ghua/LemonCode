@@ -27,6 +27,7 @@ import { runModelBackedTurnStep } from "./turn-model-step.js";
 import {
   AUTOMATION_MUTATION_TOOL_NAMES,
   evaluateRapidRefill,
+  filterTurnRecallOverlayEntries,
   isAutomationMutationRestrictedTurn,
   isOffPeakCreateRestrictedTurn,
   MAX_CONSECUTIVE_RAPID_REFILLS,
@@ -34,6 +35,7 @@ import {
   RAPID_REFILL_TOOL_TURN_THRESHOLD,
   recordCompactHistoryRound,
   recordCompactSuccess,
+  withTurnRecallOverlaysDetached,
 } from "./turn-loop-state.js";
 import type { RegularTurnLoopState } from "./turn-loop-state.js";
 import {
@@ -42,6 +44,8 @@ import {
   filterOutputTokenContinuationEntries,
 } from "./turn-output-token-continuation.js";
 import { activateExecutionFailoverAtSafeBoundary } from "./model-failover-router.js";
+import { ProjectMemoryRecallIndex } from "../../memory/recall/index.js";
+import { appendSessionHistoryRecallForTurn } from "./turn-session-history-recall.js";
 
 export async function runRegularTurnLoop(
   this: AgentRuntimeInternal,
@@ -95,42 +99,13 @@ export async function runRegularTurnLoop(
       }
     }
 
-    const compactPhase =
-      state.modelStepCount === 0 ? CompactPhase.PreRequest : CompactPhase.MidTurn;
-    await this.microcompactIfNeeded(state.turnTraceContext, state.events, state.turnAbortSignal, {
-      model: state.model,
-      modelStepIndex: state.modelStepCount,
-      phase: compactPhase,
-      turnRequestState: state.turnRequestState,
-    });
+    await compactTurnRequestBeforeModelStep(this, state);
     throwIfTurnAborted(state.turnAbortSignal);
 
-    const rapidRefill = evaluateRapidRefill(state.compactTracking);
-    const autoCompactOutcome = await this.autoCompactIfNeeded(
-      state.turnTraceContext,
-      state.events,
-      state.turnAbortSignal,
-      {
-        compactReason: CompactReason.ContextLimit,
-        modelStepIndex: state.modelStepCount,
-        phase: compactPhase,
-        rapidRefill,
-        model: state.model,
-        turnRequestState: state.turnRequestState,
-      },
-    );
-    if (autoCompactOutcome === "rapid_refill_blocked") {
-      throw createCompactRapidRefillError({
-        consecutiveRapidRefills: rapidRefill.consecutiveRapidRefills,
-        maxConsecutiveRapidRefills: MAX_CONSECUTIVE_RAPID_REFILLS,
-        toolTurnThreshold: RAPID_REFILL_TOOL_TURN_THRESHOLD,
-        toolTurnsSinceCompact: rapidRefill.toolTurnsSinceCompact,
-      });
-    }
-    if (autoCompactOutcome === "compacted") {
-      recordCompactSuccess(state, rapidRefill);
-      recordCompactHistoryRound(state);
-    }
+    await appendProjectMemoryRecallForTurn(this, state);
+    throwIfTurnAborted(state.turnAbortSignal);
+
+    await appendSessionHistoryRecallForTurn(this, state);
     throwIfTurnAborted(state.turnAbortSignal);
 
     const finishMcp = beginLocalTurnPreparation(state.turnTraceContext, "mcp");
@@ -196,31 +171,13 @@ export async function runRegularTurnLoop(
         systemReminderAttachmentEntry("output_style", outputStyleReminderBody),
       ]);
     }
-    const providerEntries = [...state.turnRequestState.entries];
-    const requestEntries = providerEntries;
-    // provider-visible user ordering projection 会改变最终 latest user 落点，
-    // cache-control 必须在 projection 后统一设置，避免 raw synthetic entry 抢占缓存锚点。
-    const providerProjection = buildRuntimeProviderRequestMessages(this, {
-      entries: requestEntries,
-      applyCacheControl: true,
-      model: state.model,
-    });
-    const { messages } = providerProjection;
-    const recordableEntries = filterOutputTokenContinuationEntries(requestEntries);
-    const recordableProjection =
-      recordableEntries === requestEntries
-        ? providerProjection
-        : buildRuntimeProviderRequestMessages(this, {
-            entries: recordableEntries,
-            applyCacheControl: true,
-            model: state.model,
-          });
-    state.turnMachine = new TurnMachineImpl(
-      state.turnMachine.startModelRequest(
-        `${state.model.providerId}/${state.model.modelId}`,
-        recordableProjection.messages,
-      ),
-    );
+    const {
+      latestRealUserMessageIndex,
+      messages,
+      recordedMessages,
+      requestEntries,
+      sourceEntries,
+    } = beginTurnModelRequest(this, state);
 
     // 生产包需要知道 Turn 是否已经跨过 provider 边界；这里只记录请求元数据，
     // 不记录 prompt、消息内容或 streaming chunk，避免泄露内容并控制日志量。
@@ -235,17 +192,156 @@ export async function runRegularTurnLoop(
 
     const result = await runModelBackedTurnStep.call(this, state, {
       drainedSteerForNextRequest,
-      latestRealUserMessageIndex: providerProjection.diagnostics.latestRealUserMessageIndex,
+      latestRealUserMessageIndex,
       messages,
-      sourceEntries: providerProjection.sourceEntries,
+      sourceEntries,
       requestEntries,
-      recordedMessages: recordableProjection.messages,
+      recordedMessages,
       tools,
     });
 
     if (result === "break") {
       break;
     }
+  }
+}
+
+export async function compactTurnRequestBeforeModelStep(
+  runtime: AgentRuntimeInternal,
+  state: RegularTurnLoopState,
+): Promise<void> {
+  const compactPhase = state.modelStepCount === 0 ? CompactPhase.PreRequest : CompactPhase.MidTurn;
+  await withTurnRecallOverlaysDetached(state.turnRequestState, async () => {
+    await runtime.microcompactIfNeeded(
+      state.turnTraceContext,
+      state.events,
+      state.turnAbortSignal,
+      {
+        model: state.model,
+        modelStepIndex: state.modelStepCount,
+        phase: compactPhase,
+        turnRequestState: state.turnRequestState,
+      },
+    );
+    throwIfTurnAborted(state.turnAbortSignal);
+
+    const rapidRefill = evaluateRapidRefill(state.compactTracking);
+    const autoCompactOutcome = await runtime.autoCompactIfNeeded(
+      state.turnTraceContext,
+      state.events,
+      state.turnAbortSignal,
+      {
+        compactReason: CompactReason.ContextLimit,
+        modelStepIndex: state.modelStepCount,
+        phase: compactPhase,
+        rapidRefill,
+        model: state.model,
+        turnRequestState: state.turnRequestState,
+      },
+    );
+    if (autoCompactOutcome === "rapid_refill_blocked") {
+      throw createCompactRapidRefillError({
+        consecutiveRapidRefills: rapidRefill.consecutiveRapidRefills,
+        maxConsecutiveRapidRefills: MAX_CONSECUTIVE_RAPID_REFILLS,
+        toolTurnThreshold: RAPID_REFILL_TOOL_TURN_THRESHOLD,
+        toolTurnsSinceCompact: rapidRefill.toolTurnsSinceCompact,
+      });
+    }
+    if (autoCompactOutcome === "compacted") {
+      recordCompactSuccess(state, rapidRefill);
+      recordCompactHistoryRound(state);
+    }
+  });
+}
+
+export function beginTurnModelRequest(runtime: AgentRuntimeInternal, state: RegularTurnLoopState) {
+  const requestEntries = [...state.turnRequestState.entries];
+  // provider-visible user ordering projection 会改变最终 latest user 落点，
+  // cache-control 必须在 projection 后统一设置，避免 raw synthetic entry 抢占缓存锚点。
+  const providerProjection = buildRuntimeProviderRequestMessages(runtime, {
+    entries: requestEntries,
+    applyCacheControl: true,
+    model: state.model,
+  });
+  const recordableEntries = filterTurnRecallOverlayEntries(
+    filterOutputTokenContinuationEntries(requestEntries),
+  );
+  const recordableProjection =
+    recordableEntries === requestEntries
+      ? providerProjection
+      : buildRuntimeProviderRequestMessages(runtime, {
+          entries: recordableEntries,
+          applyCacheControl: true,
+          model: state.model,
+        });
+  state.turnMachine = new TurnMachineImpl(
+    state.turnMachine.startModelRequest(
+      `${state.model.providerId}/${state.model.modelId}`,
+      recordableProjection.messages,
+    ),
+  );
+
+  return {
+    latestRealUserMessageIndex: providerProjection.diagnostics.latestRealUserMessageIndex,
+    messages: providerProjection.messages,
+    recordedMessages: recordableProjection.messages,
+    requestEntries,
+    sourceEntries: providerProjection.sourceEntries,
+  };
+}
+
+export async function appendProjectMemoryRecallForTurn(
+  runtime: AgentRuntimeInternal,
+  state: RegularTurnLoopState,
+): Promise<void> {
+  if (
+    state.memoryRecallAttempted ||
+    state.modelStepCount !== 0 ||
+    state.turnRequestState.outputTokenContinuationCount > 0
+  ) {
+    return;
+  }
+
+  // attempt 必须先于任何 I/O 落位；否则失败重试或 provider failover 会重复扫描与注入。
+  state.memoryRecallAttempted = true;
+  const query = state.turnRecallQuery?.trim();
+  if (!query || !runtime.memoryRoot || !runtime.fileSystemPort) return;
+
+  const startedAt = Date.now();
+  runtime.projectMemoryRecallIndex ??= new ProjectMemoryRecallIndex();
+  try {
+    const outcome = await runtime.projectMemoryRecallIndex.recall({
+      fileSystem: runtime.fileSystemPort,
+      query,
+      rootDir: runtime.memoryRoot,
+      signal: state.turnAbortSignal,
+      traceContext: state.turnTraceContext,
+    });
+    if (outcome.attachment) {
+      appendTurnRequestEntries(state.turnRequestState, [
+        systemReminderAttachmentEntry("memory_recall", outcome.attachment),
+      ]);
+    }
+    runtime.logger?.debug("Project memory recall completed", {
+      ...traceContextToLogContext(state.turnTraceContext),
+      candidateCount: outcome.candidateCount,
+      durationMs: Date.now() - startedAt,
+      event: "memory.recall.completed",
+      indexedCount: outcome.indexedCount,
+      matchCount: outcome.matchCount,
+      module: "core.runtime",
+      outputCharacterCount: outcome.attachment?.length ?? 0,
+    });
+  } catch (error) {
+    if (state.turnAbortSignal.aborted) return;
+    // Recall 是可恢复的辅助上下文：扫描失败不能阻断用户主 turn，也不能回退注入整库正文。
+    runtime.logger?.warn("Project memory recall failed", {
+      ...traceContextToLogContext(state.turnTraceContext),
+      durationMs: Date.now() - startedAt,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      event: "memory.recall.failed",
+      module: "core.runtime",
+    });
   }
 }
 
