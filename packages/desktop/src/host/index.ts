@@ -1854,6 +1854,8 @@ function disposeLocalResourceTelemetry(): void {
 type ExposedServicePortHandle = {
   server: IChannelServer & { ready(): void };
   dispose(): void;
+  /** 手机 resumed 重连复用 attachment:全新 ChannelClient 等待 Initialize,需经 host 重发 */
+  resendInit(): void;
 };
 
 function createControllerRoutedTaskService(
@@ -2043,6 +2045,11 @@ function exposeServicesOnMessagePort(
   });
   const handle: ExposedServicePortHandle = {
     server,
+    // 手机 resumed 重连时由 main 请求重发:复用 attachment 不重建 ChannelServer,
+    // 手机端全新 ChannelClient 若收不到 Initialize 会把所有请求永久排队(镜像黑屏根因)。
+    resendInit() {
+      rawServer.ready();
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -2738,6 +2745,13 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     windowHostAttachmentRegistry.detach(msg.attachmentId);
     logger.info(`detached service port, attachmentId=${msg.attachmentId}`);
     logWindowHostTopology("attachment-removed");
+    return;
+  }
+
+  if (msg.type === HostMessageTypes.ResendServicePortInit) {
+    // 手机 resumed 重连复用 attachment,而手机页面是全新 ChannelClient:不重发
+    // Initialize 会让其所有 RPC 永久排队,镜像表现为永远停在启动加载页。
+    windowHostAttachmentRegistry.resendInit(msg.attachmentId);
     return;
   }
 

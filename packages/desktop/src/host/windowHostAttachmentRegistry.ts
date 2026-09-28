@@ -7,6 +7,8 @@ interface WindowHostAttachmentPort {
 
 interface WindowHostAttachmentHandle {
   dispose(): void;
+  /** 手机 resumed 重连复用 attachment 时,请求 host 侧 ChannelServer 重发 RPC Initialize。 */
+  resendInit?(): void;
 }
 
 interface WindowHostResolvedAttachmentScope<TServices, TCapabilities = never> {
@@ -98,6 +100,10 @@ export function createWindowHostAttachmentRegistry<
     disposeTracked(tracked);
   }
 
+  function resendInit(attachmentId: string): void {
+    attachments.get(attachmentId)?.handle.resendInit?.();
+  }
+
   function detachStaleRemoteSessionAttachments(
     remoteSessionId: string,
     currentGeneration: number,
@@ -131,6 +137,7 @@ export function createWindowHostAttachmentRegistry<
   return {
     attach,
     detach,
+    resendInit,
     detachRemoteSessionAttachments,
     detachStaleRemoteSessionAttachments,
     size: () => attachments.size,

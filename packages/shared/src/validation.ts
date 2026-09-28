@@ -268,6 +268,11 @@ export const hostDetachServicePortMessageSchema = z.object({
   attachmentId: nonEmptyStringSchema,
 });
 
+export const hostResendServicePortInitMessageSchema = z.object({
+  type: z.literal("resend-service-port-init"),
+  attachmentId: nonEmptyStringSchema,
+});
+
 export const hostDisposeMessageSchema = z.object({
   type: z.literal("dispose"),
 });
@@ -454,6 +459,7 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostDisposeRemoteWorkspaceSessionMessageSchema,
   hostAttachServicePortMessageSchema,
   hostDetachServicePortMessageSchema,
+  hostResendServicePortInitMessageSchema,
   hostDisposeMessageSchema,
   hostBroadcastEnvelopeSchema,
   hostBroadcastClaimResultMessageSchema,

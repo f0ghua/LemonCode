@@ -548,6 +548,8 @@ export const HostMessageTypes = {
   DisposeRemoteWorkspaceSession: "dispose-remote-workspace-session",
   /** main → host：复用现有服务，对新的 RPC MessagePort 暴露服务 */
   AttachServicePort: "attach-service-port",
+  /** main → host：手机 resumed 重连复用 attachment,全新 ChannelClient 需重发 RPC Initialize */
+  ResendServicePortInit: "resend-service-port-init",
   /** main → host：精确释放一个 RPC MessagePort attachment */
   DetachServicePort: "detach-service-port",
   /** 窗口关闭，清理资源 */

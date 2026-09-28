@@ -30,6 +30,7 @@ import {
   shouldEnableProviderAvailabilityLoginEntryGuard,
   shouldResolveProviderStartupState,
   shouldBlockRootRender,
+  shouldRenderWebStartupFallback,
   shouldShowRootStartupLoading,
   shouldOpenFallbackWorkspaceAfterCreate,
 } from "@/lib/rootStartupGate.js";
@@ -235,13 +236,27 @@ function RootInner({
     }
   });
   const handleGitBackupWelcomeComplete = useCallback(
-    (config: { enabled: boolean; oss?: { accessKeyId: string; accessKeySecret: string; bucket: string; region: string; pathPrefix?: string } }) => {
+    (config: {
+      enabled: boolean;
+      oss?: {
+        accessKeyId: string;
+        accessKeySecret: string;
+        bucket: string;
+        region: string;
+        pathPrefix?: string;
+      };
+    }) => {
       try {
         localStorage.setItem("git-backup-onboarding-done", "1");
         if (config.enabled && config.oss) {
-          localStorage.setItem("git-backup-config", JSON.stringify({ enabled: true, oss: config.oss }));
+          localStorage.setItem(
+            "git-backup-config",
+            JSON.stringify({ enabled: true, oss: config.oss }),
+          );
         }
-      } catch { /* noop */ }
+      } catch {
+        /* noop */
+      }
       setGitBackupWelcomeOpen(false);
     },
     [],
@@ -1011,6 +1026,19 @@ function RootInner({
     );
   }
 
+  // 手机/Web 镜像:启动解析(鉴权/provider/会话恢复,手机场景经 CF 桥,RTT 显著放大)
+  // 完成前没有 workspaceShellPath;桌面此时被启动 loading 门禁覆盖,Web 无门禁会渲染
+  // 空 RootShell——整页黑屏(specs/mobile-remote-control-cf-workers.md「启动渲染门禁」)。
+  // 以同一启动页兜底,直到 welcome 或工作区内容就绪。
+  const webStartupFallbackVisible = shouldRenderWebStartupFallback({
+    isDesktop,
+    hasWorkspaceShell: Boolean(workspaceShellPath),
+    isSettingsTabActive,
+  });
+  const webStartupFallbackNode = webStartupFallbackVisible ? (
+    <RootStartupLoading label={intl.formatMessage({ id: "common.loading" })} />
+  ) : null;
+
   return (
     <RootShell>
       {rootModelSelectionErrorNode}
@@ -1018,11 +1046,14 @@ function RootInner({
       {directoryBrowserDialog}
       <OccupationOnboarding
         showWindowControls={Boolean(isWindowsDesktop || (isDesktop && !isMacDesktop))}
-        showChildrenWhileLoading={!workspaceShellPath && isSettingsTabActive}
+        // Web 兜底 loading 也要在 onboarding 状态加载期间可见,否则 children 被隐藏、整页仍为空壳。
+        showChildrenWhileLoading={
+          !workspaceShellPath && (isSettingsTabActive || webStartupFallbackVisible)
+        }
         isMacDesktop={isMacDesktop}
         isWindowsDesktop={isWindowsDesktop}
       >
-        {/* 新引导属于应用级偏好；无项目时也要挂载，才能响应设置页的手动打开请求。 */}
+        {/* 新引导属于应用级偏好;无项目时也要挂载,才能响应设置页的手动打开请求。 */}
         {!workspaceShellPath ? (
           isSettingsTabActive ? (
             <ScopedErrorBoundary
@@ -1033,7 +1064,9 @@ function RootInner({
             >
               <SettingsPage {...settingsLayerProps} />
             </ScopedErrorBoundary>
-          ) : null
+          ) : (
+            webStartupFallbackNode
+          )
         ) : (
           <RootWorkspaceContent
             workspaceScopedServices={workspaceScopedServices}

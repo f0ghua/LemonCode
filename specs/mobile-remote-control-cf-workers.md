@@ -67,21 +67,24 @@
 
 - 载体:`packages/web` 完整客户端的构建产物(**镜像 UI**),由 Worker 静态资源托管;新增配对深链接入——从 `/p/<roomId>#<capability>` 深链读取配对参数,完成双方授权后按既有 connectViaWebSocket 流程连到同源 WS。
 - 权限镜像:命令面与桌面使用者一致,不做额外缩减;仅 desktop-continuous 专属能力(如视频 preview)按既有档位门禁如实降级。断网重连后按 web-remote-replayable 恢复,已结算事实不丢、可 replay 补齐。
+- 启动渲染门禁(2026-09-28 黑屏诊断补充):桌面专用的启动 loading 门禁(`shouldShowRootStartupLoading`)只覆盖桌面,Web/手机在启动解析(鉴权/provider/会话恢复,均经 CF 桥,RTT 显著放大)完成前会落到「无 workspaceShellPath」分支。该分支禁止渲染空 RootShell(表现为整页黑屏),必须渲染与桌面一致的 `RootStartupLoading` 启动页,直至 welcome/工作区内容就绪。
+- RPC Initialize 时序(同日诊断补充):host 侧 ChannelServer 仅在创建时发送一次 Initialize,而配对确认触发的 attach 早于手机数据套接字接入(Worker 按 §2.3 原语义丢弃早期帧),60s 宽限内的 resumed 重连又复用 attachment 不重建 ChannelServer——两者都会让手机端全新 ChannelClient 永久停在 Uninitialized,所有 RPC 排队,镜像永远不渲染。修复:(a) Worker 对桥接建立窗口内的 host→手机帧做有界缓冲与回放;(b) resumed 桥接时桌面经 `resend-service-port-init` 请求 host 重发 Initialize。
 
 ## 复用现有构件对照
 
-| 现有构件 | 位置 | 在本方案中的角色 |
-| --- | --- | --- |
-| 一次性 capability 防重放(30s TTL、consume-once) | `packages/server/src/hostCapability.ts` | Worker DO 同构实现配对 token |
-| `/ws`(恒 web-remote-replayable)与 `/ws/host` 双路径语义 | `packages/server/src/http.ts:322-343` | 协议语义参照;手机按 replayable 档位接入 |
-| v4 连接作用域 clientMode/档位权威面 | `packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts` | 手机连接的可信档位判定,不新增路径 |
-| `attachRemoteWorkspaceSessionHost`(无调用方) | `packages/desktop/src/desktopRemoteSessions.ts:832` | 手机 attachment 的生产入口 |
-| web-remote-replayable 客户端 | `packages/web` | 移动端镜像 UI(完整客户端构建产物,由 Worker 托管) |
-| 凭据集中管理 | `packages/ui/src/root/remoteWorkspaceHistory.ts` | 接入 Key/设备凭据的保存与删除 |
+| 现有构件                                                | 位置                                                             | 在本方案中的角色                                 |
+| ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
+| 一次性 capability 防重放(30s TTL、consume-once)         | `packages/server/src/hostCapability.ts`                          | Worker DO 同构实现配对 token                     |
+| `/ws`(恒 web-remote-replayable)与 `/ws/host` 双路径语义 | `packages/server/src/http.ts:322-343`                            | 协议语义参照;手机按 replayable 档位接入          |
+| v4 连接作用域 clientMode/档位权威面                     | `packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts` | 手机连接的可信档位判定,不新增路径                |
+| `attachRemoteWorkspaceSessionHost`(无调用方)            | `packages/desktop/src/desktopRemoteSessions.ts:832`              | 手机 attachment 的生产入口                       |
+| web-remote-replayable 客户端                            | `packages/web`                                                   | 移动端镜像 UI(完整客户端构建产物,由 Worker 托管) |
+| 凭据集中管理                                            | `packages/ui/src/root/remoteWorkspaceHistory.ts`                 | 接入 Key/设备凭据的保存与删除                    |
 
 ## 验收
 
 - 桌面处于 NAT 后(仅出站 443)时,手机在异地扫码或打开复制链接 → 完成双方授权 → 可查看当前工作区任务、发送输入、看到流式输出。
+- 手机端配对接管后的整个启动解析期间(鉴权/provider/会话恢复未完成时)不得出现整页黑屏或空壳;应显示启动 loading,直至 welcome 或工作区内容就绪。
 - 一次性 capability:同一 token 第二次使用被拒;过期被拒;连续失败达阈值房间作废;未授权设备无法获得任何会话数据。
 - 桌面「停止」或吊销某设备后,该设备现有连接立即断开且凭据失效;再次连接需重新走双方授权。
 - 手机断网后重连(同设备凭据):web-remote-replayable 恢复,已结算事实不丢、可 replay 补齐。

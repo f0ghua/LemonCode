@@ -335,7 +335,10 @@ export function createRemoteControlController(options: RemoteControlControllerOp
                 }
               })
               .catch((error: unknown) => {
-                options.logger.warn("[remote-control] regenerate room after auto-reject failed:", error);
+                options.logger.warn(
+                  "[remote-control] regenerate room after auto-reject failed:",
+                  error,
+                );
                 pushState({ state: "error", error: "ROOM_REGENERATION_FAILED" });
               });
             return;
@@ -464,6 +467,13 @@ export function createRemoteControlController(options: RemoteControlControllerOp
         // 且旧 pump 会成为向同一条隧道 WS 写帧的第二条写入路径。
         clearIdleDisconnectTimer();
         void touchDeviceLastSeen(deviceId);
+        // 手机页面 reload 后是全新 ChannelClient(Uninitialized):复用的 attachment
+        // 不会重建 ChannelServer、也不会再发 Initialize,必须显式请求 host 重发,
+        // 否则手机端所有 RPC 永久排队,镜像停在启动页(黑屏根因之二,§3.3)。
+        bridge.process.postMessage({
+          type: HostMessageTypes.ResendServicePortInit,
+          attachmentId: bridge.attachmentId,
+        });
         pushState({ state: "bridged", roomId: current.roomId });
         return;
       }

@@ -429,7 +429,16 @@ test("resumed 重连复用既有桥:不重复 attach、不 detach、帧仍双向
   });
   // 复用既有 attachment/pump:attach 仍只调过一次,旧 attachmentId 没有收到任何 detach。
   assert.equal(okAttach.calls.length, 1);
-  assert.equal(okAttach.detachMessages.length, 0);
+  assert.equal(
+    okAttach.detachMessages.filter((message) => message.type === "detach-service-port").length,
+    0,
+  );
+  // resumed 重连复用 attachment 不重建 ChannelServer,必须请求 host 重发 RPC Initialize:
+  // 手机页面 reload 后是全新 ChannelClient,缺失该帧所有请求永久排队,镜像永远不渲染。
+  assert.deepEqual(
+    okAttach.detachMessages.filter((message) => message.type === "resend-service-port-init"),
+    [{ type: "resend-service-port-init", attachmentId: "attachment-1" }],
+  );
   // 帧泵仍指向同一条隧道,双向转发继续可用(不存在第二条写入路径)。
   tunnel.delegate.onBridgeBinary?.(encodeRemoteControlRegularFrame(new Uint8Array([9])));
   assert.equal(okAttach.postedToPort.length, 1);
