@@ -1,6 +1,6 @@
 # 工作区记忆与检索增强执行方案
 
-> 状态：已完成（2026-09-27）；P1、P2-A、P2-B、P2-C 与 P3 均已实现并通过统一验证；production-SQLite 基准通过，因此 P4 FTS 按门禁裁剪，不新增 migration
+> 状态：已完成（2026-09-27）；P1、P2-A、P2-B、P2-C 与 P3 均已实现并通过统一验证；P4 FTS 当前门禁未触发，保持暂缓（deferred），不新增 migration，也不视为永久删除
 > 本文只覆盖 Agent 的工作区记忆与同工作区会话检索。会话分享脱敏与 Git 行级归因已从本方案拆出；它们分别属于发布安全和代码归因域，不能与记忆状态共用里程碑或回滚开关。
 
 ## 1. 本次审查后的关键修正
@@ -173,13 +173,46 @@ P3 的手动 opt-in 路径已落地，接口与验收见 `specs/session-history-
 
 ### P4：FTS 门禁结论
 
-P4 不触发。固定 production-SQLite 语料的 p95/p99 均通过 P3 门槛，当前 bounded snapshot scan
-没有提供引入 FTS migration 的证据。因此：
+P4 当前不实施，状态为 `deferred / not triggered`，而不是“永久不需要”。当前产品合约只在同工作区
+最近的有界候选中召回：自动路径最多 8 个候选，显式工具最多 20 个候选；在这个边界内，固定
+production-SQLite 语料的 p95/p99 均通过 P3 门槛，现有证据不足以支持立即承担 FTS migration
+及索引一致性成本。因此：
 
 - 不创建 tasks DB `0004` 或 CLI DB `0024`；
 - 不新增 shadow table、trigger、回填任务或 FTS 查询构造器；
-- 若未来同一可复现基准或脱敏生产 telemetry 持续越过门槛，必须重新开启独立设计评审，并继续
-  遵守 append-only migration、基表/索引原子性、启动能力探测及停读不删表的回滚约束。
+- 2026-09-28 使用同一命令复测 200 次，得到 cold=65.677ms、p95=39.502ms、p99=48.407ms、
+  failures=[]，仍远低于 p95≤150ms、p99≤300ms 门槛；多语言质量与统计判定聚焦测试 3/3 通过；
+- FTS 不是当前功能正确性的依赖。现有 bounded snapshot、workspace identity 隔离、active rewind
+  branch、可见文本过滤和词法排序均由共享 search service 保持，直接把原始 message/part JSON
+  接入 FTS 反而会引入隐藏内容、废弃分支或 tokenizer 语义漂移风险。
+
+现有通过证据只说明“当前 checkout、当前机器、当前有界热路径足够快”，不能外推为全历史和所有
+生产环境的永久结论，审计时确认以下证据边界：
+
+- 固定语料只有 9 个 prior session，每个 64 条 message、每条 2 个 part；没有打满自动路径的
+  96 message、384 part、98,304 persisted JSON bytes 上限，也没有覆盖高 session 基数；
+- 五个 benchmark query 都写入每个候选 transcript；输出校验只要求非空和不超过上限，没有断言
+  期望 session、排序、preview、`failedSessionCount === 0` 或最低扫描数量；
+- `coldMs` 是同一连接完成建库和 seed 后的首次读取，只做观察、不参与门禁；p95/p99 来自 25 次
+  warm-up 后的 200 次连续调用；
+- precision fixture 直接评估 6 个预制候选的 ranker，没有经过 SQLite、候选截断，也没有覆盖唯一
+  相关结果位于第 9 个或更旧 session 的 recall@k；
+- 当前 search service 先按更新时间取得最新候选再做文本排序，因此它提供的是“最近 8/20 个候选
+  内检索”，不是“整个工作区全历史检索”。这是当前已接受的产品边界，而不是 FTS 已解决的能力。
+
+仅在下列任一条件出现时重新开启 P4 独立设计评审：
+
+1. 脱敏生产 telemetry 在代表性环境中持续超过 p95 150ms 或 p99 300ms，且 profiling 确认瓶颈
+   位于 transcript 文本扫描，而不是 session metadata 枚举、磁盘或其他路径；
+2. 产品目标改为跨整个工作区历史查找最相关会话，或大历史库 evidence 显示相关 session 经常落在
+   最近 8/20 个候选之外；
+3. 补充打满 row/part/byte 边界、高 session 基数、跨平台和重复运行的基准后，稳定越过门槛，或
+   端到端 recall@k 低于另行确认的产品门槛。
+
+若未来瓶颈只是 workspace scope 下按 `time_updated` 取得最新 session，应先评估匹配过滤与排序的
+复合 B-tree metadata index；这类问题不能用 FTS 替代。确需 FTS 时，仍必须另立 spec 与 migration
+评审，并遵守 append-only migration、基表/索引原子性、启动能力探测、active branch/可见文本一致性
+以及停读不删表的回滚约束。
 
 ## 6. 验收矩阵
 
@@ -240,7 +273,7 @@ derived views: MEMORY.md prefix overview + current-turn topic snippets + optiona
 ordering/idempotency: after compact, before first provider request; each enabled recall path attempts once per turn
 delivery: both profiles reuse the same runtime owner; no client-side queue/cache
 contracts/spec/tests: core memory recall + explicit/automatic session recall + ReadSessionContext workspace guard + explicit node:test files
-migration boundary: no DB/protocol/schema migration; P4 was pruned by passing benchmark evidence
+migration boundary: no DB/protocol/schema migration; P4 is deferred/not triggered under the current bounded contract and must be re-reviewed when its recorded gates fire
 ```
 
 ## 9. 已知治理缺口

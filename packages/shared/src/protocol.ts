@@ -313,6 +313,8 @@ export interface AppSettings {
   toolGroupingChangesEnabled?: boolean;
   /** ZCode 运行中继续输入时，是排队到下一轮，还是引导到下一次工具调用后运行 */
   zcodeInteractionBehavior?: ZCodeInteractionBehavior;
+  /** 当前聚焦编码任务成功完成后，使用现有 Git 生成器准备提交信息草稿。 */
+  autoGenerateGitCommitMessage?: boolean;
   /** Agent 提问五分钟无人回答时是否允许自动继续；缺失按开启兼容旧配置。 */
   askUserQuestionAutoResolutionEnabled?: boolean;
   /** 是否完整保留 Model I/O；开启后不轮转、不限额重置、不压缩或裁剪，鉴权信息仍会脱敏。 */

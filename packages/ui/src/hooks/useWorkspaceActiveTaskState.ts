@@ -125,9 +125,9 @@ export function useWorkspaceActiveTaskState({
   const resolvedActiveTaskMeta = useStableResolvedActiveTaskMeta(
     activeTaskMeta ?? activeTaskSnapshotMeta,
   );
-  // store 收尾：taskMessagesByTaskId 已无写入方（旧 ChatView/广播消息回放均退役），
-  // 由消息流派生的实时改动摘要恒为空；摘要展示回落到 task meta.changeSummary（持久化侧）。
-  const activeTaskChangeSummary = null;
+  // Bug 原因：旧实时消息摘要退役后这里被固定成 null，注释声称回落到 task meta，
+  // 实际却让提交范围静默扩大到整个工作区。修复后只读取已合并稳定的持久化 meta。
+  const activeTaskChangeSummary = resolvedActiveTaskMeta?.changeSummary ?? null;
   const activeTraceId = resolvedActiveTaskMeta?.traceId ?? null;
   const activeSessionId = resolvedActiveTaskMeta?.taskId ?? null;
   const activeTaskProvider = resolvedActiveTaskMeta?.provider ?? null;

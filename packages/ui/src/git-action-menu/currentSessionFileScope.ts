@@ -1,4 +1,4 @@
-import type { GitRepositorySummary, ZCodeTaskChangeSummary } from "@zcode/shared";
+import type { GitFileChange, GitRepositorySummary, ZCodeTaskChangeSummary } from "@zcode/shared";
 import type { GitBranchCommitPreviewFile } from "@/git-branch-switcher/display.js";
 
 function normalizeCommitScopePath(path: string): string {
@@ -55,11 +55,13 @@ function addScopePath(scope: Set<string>, path: string | null): void {
 }
 
 function buildCurrentSessionFileScope(options: {
-  summary: ZCodeTaskChangeSummary | null;
+  currentSessionFilePaths?: readonly string[];
   gitSummary: GitRepositorySummary;
   workspacePath: string;
 }): Set<string> | null {
-  const filePaths = getCurrentSessionFilePaths(options.summary);
+  const filePaths = options.currentSessionFilePaths
+    ?.map((path) => path.trim())
+    .filter((path) => path.length > 0);
   if (!filePaths) {
     return null;
   }
@@ -94,6 +96,16 @@ function isPreviewFileInScope(
   );
 }
 
+function isGitFileInScope(file: GitFileChange, scope: Set<string> | null): boolean {
+  if (!scope) {
+    return true;
+  }
+
+  return [file.path, file.repoRelativePath, file.workspaceRelativePath].some((path) =>
+    scope.has(normalizeCommitScopePath(path)),
+  );
+}
+
 export function getCurrentSessionFilePaths(
   summary: ZCodeTaskChangeSummary | null,
 ): string[] | undefined {
@@ -111,10 +123,67 @@ export function filterCommitPreviewFilesByCurrentSession(options: {
   gitSummary: GitRepositorySummary;
   workspacePath: string;
 }): GitBranchCommitPreviewFile[] {
+  return filterCommitPreviewFilesByPaths({
+    files: options.files,
+    currentSessionFilePaths: getCurrentSessionFilePaths(options.summary),
+    gitSummary: options.gitSummary,
+    workspacePath: options.workspacePath,
+  });
+}
+
+export function filterCommitPreviewFilesByPaths(options: {
+  files: readonly GitBranchCommitPreviewFile[];
+  currentSessionFilePaths?: readonly string[];
+  gitSummary: GitRepositorySummary;
+  workspacePath: string;
+}): GitBranchCommitPreviewFile[] {
   const scope = buildCurrentSessionFileScope({
-    summary: options.summary,
+    currentSessionFilePaths: options.currentSessionFilePaths,
     gitSummary: options.gitSummary,
     workspacePath: options.workspacePath,
   });
   return options.files.filter((file) => isPreviewFileInScope(file, scope));
+}
+
+export function filterGitFilesByCurrentSession(options: {
+  files: readonly GitFileChange[];
+  currentSessionFilePaths?: readonly string[];
+  gitSummary: GitRepositorySummary;
+  workspacePath: string;
+}): GitFileChange[] {
+  const scope = buildCurrentSessionFileScope({
+    currentSessionFilePaths: options.currentSessionFilePaths,
+    gitSummary: options.gitSummary,
+    workspacePath: options.workspacePath,
+  });
+  return options.files.filter((file) => isGitFileInScope(file, scope));
+}
+
+export function buildGitChangesFingerprint(options: {
+  files: readonly GitFileChange[];
+  currentSessionFilePaths: readonly string[];
+  gitSummary: GitRepositorySummary;
+  workspacePath: string;
+}): string | null {
+  if (!options.currentSessionFilePaths.some((path) => path.trim().length > 0)) {
+    return null;
+  }
+  const files = filterGitFilesByCurrentSession(options);
+  if (files.length === 0) {
+    return null;
+  }
+
+  const entries = files
+    .map((file) => [
+      normalizeCommitScopePath(file.repoRelativePath || file.path),
+      file.section,
+      file.kind,
+      file.added,
+      file.removed,
+      file.isStaged,
+      file.isUntracked,
+      file.isConflicted,
+    ])
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return JSON.stringify(entries);
 }

@@ -7,6 +7,7 @@ import type {
 } from "@zcode/shared";
 import {
   TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH,
+  TID_SETTINGS_AUTO_GENERATE_GIT_COMMIT_MESSAGE_SWITCH,
   TID_SETTINGS_NATIVE_SEARCH_SWITCH,
 } from "@zcode/shared";
 import { useState, useCallback, useEffect } from "react";
@@ -83,6 +84,7 @@ export function GeneralSectionContent({
   toolGroupingTerminalEnabled,
   toolGroupingChangesEnabled,
   zcodeInteractionBehavior,
+  autoGenerateGitCommitMessage = false,
   askUserQuestionAutoResolutionEnabled = true,
   modelIoFullRetentionEnabled = false,
   onDataBaseDirChange,
@@ -107,6 +109,7 @@ export function GeneralSectionContent({
   onToolGroupingTerminalEnabledChange,
   onToolGroupingChangesEnabledChange,
   onZCodeInteractionBehaviorChange,
+  onAutoGenerateGitCommitMessageChange = async () => {},
   onAskUserQuestionAutoResolutionEnabledChange = async () => {},
   onModelIoFullRetentionEnabledChange = async () => {},
   onOpenOnboardingDialog,
@@ -148,6 +151,7 @@ export function GeneralSectionContent({
   toolGroupingTerminalEnabled: boolean;
   toolGroupingChangesEnabled: boolean;
   zcodeInteractionBehavior: ZCodeInteractionBehavior;
+  autoGenerateGitCommitMessage?: boolean;
   askUserQuestionAutoResolutionEnabled?: boolean;
   modelIoFullRetentionEnabled?: boolean;
   onDataBaseDirChange: (dir: string) => Promise<void>;
@@ -172,6 +176,7 @@ export function GeneralSectionContent({
   onToolGroupingTerminalEnabledChange: (enabled: boolean) => Promise<void>;
   onToolGroupingChangesEnabledChange: (enabled: boolean) => Promise<void>;
   onZCodeInteractionBehaviorChange: (behavior: ZCodeInteractionBehavior) => Promise<void>;
+  onAutoGenerateGitCommitMessageChange?: (enabled: boolean) => Promise<void>;
   onAskUserQuestionAutoResolutionEnabledChange?: (enabled: boolean) => Promise<void>;
   onModelIoFullRetentionEnabledChange?: (enabled: boolean) => Promise<void>;
   onOpenOnboardingDialog: () => void;
@@ -699,6 +704,22 @@ export function GeneralSectionContent({
       </SettingsGroupCard>
 
       <SettingsGroupCard>
+        <SettingsRow
+          label={intl.formatMessage({ id: "settings.autoGenerateGitCommitMessage" })}
+          description={intl.formatMessage({
+            id: "settings.autoGenerateGitCommitMessageDescription",
+          })}
+          control={
+            <Switch
+              aria-label={intl.formatMessage({ id: "settings.autoGenerateGitCommitMessage" })}
+              checked={autoGenerateGitCommitMessage}
+              data-testid={TID_SETTINGS_AUTO_GENERATE_GIT_COMMIT_MESSAGE_SWITCH}
+              onCheckedChange={(checked) => {
+                void onAutoGenerateGitCommitMessageChange(checked);
+              }}
+            />
+          }
+        />
         <SettingsRow
           label={intl.formatMessage({ id: "settings.zcodeInteractionBehavior" })}
           description={intl.formatMessage({

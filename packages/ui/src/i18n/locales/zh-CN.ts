@@ -1822,6 +1822,9 @@ const zhCN: Record<string, string> = {
   "settings.toolGroupingChangesDescription":
     "将连续的 Write、Edit 和 ApplyPatch 调用聚合为 Changes 分组。",
   "settings.zcodeInteractionBehavior": "交互行为",
+  "settings.autoGenerateGitCommitMessage": "任务完成后生成提交信息",
+  "settings.autoGenerateGitCommitMessageDescription":
+    "聚焦的编码任务成功完成后，使用当前模型生成提交信息草稿。不会自动暂存或提交，且会消耗模型额度。",
   "settings.zcodeInteractionBehaviorDescription":
     "在 ZCode 运行时将后续操作加入队列，或引导至下一轮工具调用后运行。",
   "settings.zcodeInteractionBehavior.option.queue": "队列",
@@ -2006,7 +2009,8 @@ const zhCN: Record<string, string> = {
   "settings.remoteControl.config.saveFailed": "保存失败，请重试",
   "settings.remoteControl.config.saveFailedWithReason": "保存失败：{error}",
   "settings.remoteControl.testConnection.title": "测试连接",
-  "settings.remoteControl.testConnection.description": "用当前域名和接入 Key 向 Worker 发起一次健康检查",
+  "settings.remoteControl.testConnection.description":
+    "用当前域名和接入 Key 向 Worker 发起一次健康检查",
   "settings.remoteControl.testConnection.action": "测试连接",
   "settings.remoteControl.testConnection.success": "连接成功（{latencyMs}ms）",
   "settings.remoteControl.testConnection.failed": "连接失败：{error}",
@@ -2063,8 +2067,7 @@ const zhCN: Record<string, string> = {
   "settings.remoteControl.pairing.error.frameProtocolViolation": "数据帧校验失败，连接已中止。",
   "settings.remoteControl.pairing.error.remoteSessionMissing": "要镜像的远程会话已不存在。",
   "settings.remoteControl.pairing.error.remoteSessionOffline": "要镜像的远程会话当前离线。",
-  "settings.remoteControl.pairing.error.remoteSessionWindowMismatch":
-    "要镜像的会话不在当前窗口。",
+  "settings.remoteControl.pairing.error.remoteSessionWindowMismatch": "要镜像的会话不在当前窗口。",
   "settings.remoteControl.pairing.error.remoteWorkspaceIdentityMismatch":
     "工作区身份与远程会话不一致，无法镜像。",
   "settings.remoteControl.pairing.error.attachFailed": "接入桌面会话失败，请重试。",

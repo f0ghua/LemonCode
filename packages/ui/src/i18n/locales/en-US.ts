@@ -1932,6 +1932,9 @@ const enUS: Record<string, string> = {
   "settings.toolGroupingChangesDescription":
     "Group consecutive Write, Edit, and ApplyPatch calls into a Changes section.",
   "settings.zcodeInteractionBehavior": "Interaction behavior",
+  "settings.autoGenerateGitCommitMessage": "Generate a commit message when a task finishes",
+  "settings.autoGenerateGitCommitMessageDescription":
+    "Use the current model to prepare a commit-message draft after a focused coding task completes successfully. This does not stage or commit changes and uses model quota.",
   "settings.zcodeInteractionBehaviorDescription":
     "While ZCode is running, add follow-up actions to the queue or guide them to run after the next tool call.",
   "settings.zcodeInteractionBehavior.option.queue": "Queue",
@@ -2156,7 +2159,8 @@ const enUS: Record<string, string> = {
   "settings.remoteControl.pairing.retry": "Start over",
   "settings.remoteControl.pairing.copyLink": "Copy link",
   "settings.remoteControl.pairing.copiedToast": "Pairing link copied",
-  "settings.remoteControl.pairing.copyFailed": "Copy failed; please select and copy the link manually",
+  "settings.remoteControl.pairing.copyFailed":
+    "Copy failed; please select and copy the link manually",
   "settings.remoteControl.pairing.qrHint":
     "Scan with your phone, or open the link below in its browser. The link works only within its validity window and only for one pairing.",
   "settings.remoteControl.pairing.staleHint":
