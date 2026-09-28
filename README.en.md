@@ -19,6 +19,15 @@ ZCode is an AI coding workspace with desktop, browser, and terminal interfaces. 
 | Web / ZCode CLI distribution | Terminal and browser workspace; packages the TUI, Web client, backend, and Agent together | `pnpm dev:web`                 |
 | Agent CLI                    | The `zcode` terminal interface, which also provides the Agent runtime for Desktop and Web | `pnpm --filter @zcode/cli dev` |
 
+## Community Enhancements
+
+This fork adds several features on top of upstream ZCode (details in the [Chinese README](README.md)):
+
+- **Agent memory (workspace memory)** — per-workspace persistent memory stored as plain local Markdown (`MEMORY.md` index plus item files). The Agent reads and writes it across sessions to recall project conventions, preferences, and context. Toggle it in onboarding or Settings; turning it off stops all reads and writes.
+- **Dynamic workflows** — the Agent can orchestrate multi-step tasks into workflows with typed subagents, fan-out, loops, and conditional branches via the built-in `CreateWorkflow` tool. Frequently used workflows are saved under the workspace `.zcode/workflows/` directory and can be re-run by name; the Automation panel shows live progress. Approval boundaries are unchanged: sensitive steps still go through per-step permission prompts.
+- **Mobile remote control (desktop mirroring)** — pair your phone by scanning a QR code or opening a pairing link. After two-way authorization the phone gets the full client UI, not a read-only thumbnail. The desktop only makes outbound connections through a Cloudflare Worker tunnel that stores no task data; pairing uses one-time capabilities plus on-desktop confirmation, device credentials are revocable, and reconnects after network drops resume automatically. Tunnel source: [cfworker-remote/](cfworker-remote/).
+- **Self-built Computer Use runtime** — `packages/zcode-cua` replaces the upstream nut-js approach with a dedicated Helper process that executes a 14-method Computer Use contract over a capability-checked broker (fail-closed on denied permissions). It reads real UIA (Windows) / AX (macOS) / AT-SPI (Linux) application trees via `@crowecawcaw/xa11y`, captures window screenshots with application/window bindings so coordinate actions cannot silently retarget after focus changes, and ships native Linux builds (x64 / arm64) from CI.
+
 ## Setup
 
 Install Git, Node.js **24.14.0**, and pnpm **10.33.2**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.

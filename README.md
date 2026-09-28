@@ -61,6 +61,44 @@ ZCode 满血版补齐了这个缺失的功能。你的 `.git` 仓库会被安全
 
 ---
 
+## 更多社区增强功能
+
+### Agent 记忆（工作区记忆）
+
+让 Agent 跨会话记住你的项目约定、偏好与工作上下文：
+
+- 每个工作区独立的持久记忆，以本地明文 Markdown 存储（`MEMORY.md` 索引 + 条目文件），你可以直接查看和编辑
+- Agent 在工作中自动读写记忆，新会话开工前自动召回相关上下文，无需每次重复交代
+- 首次引导与设置中均可开关（「开启工作区记忆」「会话记忆恢复」），关闭后停止读写
+
+### 动态工作流
+
+把多步骤任务交给 Agent 编排执行：
+
+- Agent 内置 `CreateWorkflow` 工具，可将任务编排为多智能体工作流：子任务 fan-out、循环、条件分支，中间结果带类型流转
+- 常用工作流可保存到工作区 `.zcode/workflows/` 并按名重跑；「自动化」面板实时展示运行进度与结果
+- 审批边界不变：工作流的敏感步骤仍逐项过权限审批，保存工作流本身也需要确认
+
+### 手机远程控制（镜像桌面）
+
+手机扫码或打开配对链接，获得与桌面完全对等的操作能力（完整客户端镜像，非只读缩略页）：
+
+- **双向授权**：一次性配对 capability + 桌面人工确认，设备凭据本地保存、可随时吊销
+- **Cloudflare Worker 隧道**：桌面仅出站连接，Worker 只做鉴权与转发，不保存任务数据；接入 Key 存于桌面凭据库与 Cloudflare Secret
+- **断线自愈**：网络闪断后自动刷新重连，60s 宽限免二次确认，会话事实经 replayable 订阅补齐
+- 单房间单设备、空闲自动断开；隧道源码见 [cfworker-remote/](cfworker-remote/)
+
+### 自研 Computer Use（桌面自动化运行时）
+
+`packages/zcode-cua` 是我们自研的 Computer Use 运行时，替代上游开源的 nut-js 方案：
+
+- 独立 Helper 进程经能力校验的 broker 执行 14 项 Computer Use 契约动作；权限拒绝即 fail-closed
+- 基于 `@crowecawcaw/xa11y` 读取真实 UIA（Windows）/ AX（macOS）/ AT-SPI（Linux）应用树，支持窗口截图、语义操作与原始输入
+- 截图以帧三元组（光栅 + 帧引用 + 完整性元数据）输出，携带捕获时的应用/窗口绑定——焦点切换后坐标操作不会误触其他窗口
+- CI 为 Linux 提供 xa11y 原生构建（x64 / arm64）
+
+---
+
 ## 与官方开源版的关系
 
 本仓库 fork 自 [zai-org/ZCode](https://github.com/zai-org/ZCode)，保持与上游同步。所有新增功能以独立模块形式添加，不修改原有核心逻辑。
@@ -101,6 +139,8 @@ pnpm bootstrap
 | `packages/ui` | 共享 React 组件、hooks 与 Zustand 状态 |
 | `packages/services` | 业务服务与持久化 |
 | `packages/services/src/git-backup` | **Git 自动备份服务（满血版新增）** |
+| `packages/zcode-cua` | **自研 Computer Use 运行时（满血版新增）** |
+| `cfworker-remote/` | **手机远程控制 Cloudflare Worker 隧道（满血版新增，独立仓库）** |
 | `packages/shared` | 共享协议和类型 |
 | `apps/zcode-cli` | Agent CLI、TUI、运行时与工具 |
 
