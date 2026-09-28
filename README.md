@@ -90,7 +90,7 @@ ZCode 满血版补齐了这个缺失的功能。你的 `.git` 仓库会被安全
 
 ### 自研 Computer Use（桌面自动化运行时）
 
-`packages/zcode-cua` 是我们自研的 Computer Use 运行时，替代上游开源的 nut-js 方案：
+`packages/zcode-cua` 是我们自研的 Computer Use 运行时。上游官方版本的该功能**未随源码开源**，公开仓库中只保留了基于 nut-js 的简易回退实现；我们以独立 Helper 进程 + xa11y 方案完整自研替代：
 
 - 独立 Helper 进程经能力校验的 broker 执行 14 项 Computer Use 契约动作；权限拒绝即 fail-closed
 - 基于 `@crowecawcaw/xa11y` 读取真实 UIA（Windows）/ AX（macOS）/ AT-SPI（Linux）应用树，支持窗口截图、语义操作与原始输入
